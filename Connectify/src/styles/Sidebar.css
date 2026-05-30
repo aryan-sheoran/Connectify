@@ -1,0 +1,148 @@
+/* Sidebar Styling */
+.sidebar {
+  width: 260px;
+  background: linear-gradient(180deg, #121212 0%, #0a0a0a 100%);
+  border-right: 1px solid #1f1f1f;
+  flex-shrink: 0;
+  padding-top: 0;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.6);
+  z-index: 999;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-nav {
+  padding: 2.5rem 0;
+  flex: 1;
+}
+
+.sidebar-menu {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.menu-item {
+  margin: 0;
+  padding: 0;
+}
+
+.menu-btn {
+  width: 100%;
+  padding: 1.1rem 1.5rem;
+  border: none;
+  background: transparent;
+  color: #8b92a0;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  transition: all 0.25s ease;
+  text-align: left;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  position: relative;
+  letter-spacing: 0.3px;
+}
+
+.menu-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #d0d5db;
+  padding-left: 2rem;
+}
+
+.menu-btn::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: #4a90a4;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.menu-btn:hover::before {
+  opacity: 1;
+}
+
+.menu-btn.active {
+  background: rgba(74, 144, 164, 0.15);
+  color: #4a90a4;
+  padding-left: 2rem;
+}
+
+.menu-btn.active::before {
+  opacity: 1;
+}
+
+.menu-icon-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #8b92a0;
+  transition: all 0.25s ease;
+}
+
+.menu-btn:hover .menu-icon-dot {
+  background: #4a90a4;
+  width: 8px;
+  height: 8px;
+}
+
+.menu-text {
+  flex: 1;
+}
+
+.logout-item {
+  margin-top: 3rem;
+  border-top: 1px solid #1f1f1f;
+  padding-top: 1.5rem;
+}
+
+.logout-menu-btn {
+  color: #a87070;
+}
+
+.logout-menu-btn .menu-icon-dot {
+  background: #a87070;
+}
+
+.logout-menu-btn:hover {
+  background: rgba(168, 112, 112, 0.08);
+  color: #d98080;
+}
+
+.logout-menu-btn:hover .menu-icon-dot {
+  background: #d98080;
+}
+
+.logout-menu-btn:hover::before {
+  opacity: 1;
+  background: #d98080;
+}
+
+/* Scrollbar styling for sidebar */
+.sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: #121212;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background: #2a2a2a;
+  border-radius: 3px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background: #3a3a3a;
+}

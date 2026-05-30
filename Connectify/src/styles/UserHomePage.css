@@ -1,0 +1,495 @@
+/* User Home Page */
+.user-home-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+  color: #e0e0e0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  display: flex;
+  flex-direction: row;
+}
+
+/* Page Content Wrapper */
+.page-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Content Wrapper - Sidebar and Main Side by Side */
+.content-wrapper {
+  display: flex;
+  flex: 1;
+  gap: 0;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.content-wrapper.sidebar-closed .sidebar {
+  display: none;
+}
+
+/* User Navbar */
+.user-navbar {
+  background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+  padding: 1.5rem 2rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  position: relative;
+  z-index: 100;
+}
+
+.user-navbar-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.navbar-sidebar-toggle {
+  position: absolute;
+  left: 130px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #8b92a0;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  transition: color 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.navbar-sidebar-toggle:hover {
+  color: #d0d5db;
+}
+
+.user-logo {
+  font-size: 1.8rem;
+  font-weight: 900;
+  letter-spacing: 3px;
+  color: #b0b0b0;
+  margin: 0;
+}
+
+.user-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.user-greeting {
+  font-size: 1rem;
+  color: #a0a0a0;
+  font-weight: 500;
+}
+
+.logout-btn {
+  padding: 0.7rem 1.5rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #404040 0%, #303030 100%);
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(64, 64, 64, 0.5);
+}
+
+.logout-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(64, 64, 64, 0.7);
+}
+
+/* Main Content */
+.user-main {
+  flex: 1;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+/* Welcome Section */
+.welcome-section {
+  text-align: center;
+  padding: 4rem 2rem;
+  margin-bottom: 0;
+  animation: slideInDown 0.6s ease-out;
+  background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);
+}
+
+.welcome-title {
+  font-size: 3rem;
+  color: #b0b0b0;
+  margin: 0 0 1rem 0;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.username-highlight {
+  color: #e0e0e0;
+  font-weight: 900;
+}
+
+.welcome-subtitle {
+  font-size: 1.2rem;
+  color: #a0a0a0;
+  margin: 0;
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Chat Rooms Section */
+.chat-rooms-section,
+.worldwide-rooms-section {
+  padding: 4rem 2rem;
+  background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+}
+
+.chat-rooms-section {
+  background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+}
+
+.worldwide-rooms-section {
+  background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);
+}
+
+.section-header {
+  margin-bottom: 2.5rem;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.section-header h3 {
+  font-size: 2rem;
+  color: #b0b0b0;
+  margin: 0;
+  padding-bottom: 1.5rem;
+  border-bottom: 3px solid #404040;
+  font-weight: 700;
+}
+
+/* Rooms Container */
+.rooms-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 2.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Room Cards */
+.room-card {
+  background: linear-gradient(135deg, #252525 0%, #1a1a1a 100%);
+  border: 2px solid #333;
+  border-radius: 12px;
+  padding: 2.5rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.room-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #404040 0%, #606060 50%, #404040 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.room-card:hover {
+  transform: translateY(-8px);
+  border-color: #505050;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+}
+
+.room-card:hover::before {
+  opacity: 1;
+}
+
+.room-card h4 {
+  font-size: 1.4rem;
+  color: #e0e0e0;
+  margin: 0;
+  font-weight: 700;
+}
+
+.room-card p {
+  font-size: 0.95rem;
+  color: #a0a0a0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.room-card p::before {
+  content: '●';
+  color: #4ade80;
+  font-size: 0.8rem;
+}
+
+.room-card.public-room {
+  border-color: #404040;
+  background: linear-gradient(135deg, #252525 0%, #1f1f1f 100%);
+}
+
+/* Buttons */
+.enter-btn,
+.join-btn {
+  align-self: flex-start;
+  padding: 0.8rem 2rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+  color: #000;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(74, 222, 128, 0.3);
+  margin-top: auto;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.enter-btn:hover,
+.join-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px rgba(74, 222, 128, 0.5);
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+}
+
+.join-btn {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+  color: white;
+}
+
+.join-btn:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  box-shadow: 0 6px 25px rgba(59, 130, 246, 0.5);
+}
+
+/* Footer */
+.user-footer {
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+  padding: 4rem 2rem 2rem;
+  border-top: 2px solid #333;
+}
+
+.quotes-container {
+  max-width: 1200px;
+  margin: 0 auto 2rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 2rem;
+  margin-bottom: 3rem;
+}
+
+.quote {
+  background: linear-gradient(135deg, #1f1f1f 0%, #161616 100%);
+  padding: 2.5rem;
+  border-radius: 10px;
+  border-left: 5px solid #4ade80;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+.quote:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 30px rgba(74, 222, 128, 0.2);
+  border-left-color: #22c55e;
+}
+
+.quote p {
+  color: #d0d0d0;
+  font-size: 1.05rem;
+  font-weight: 500;
+  margin: 0;
+  line-height: 1.7;
+  font-style: italic;
+}
+
+.footer-copyright {
+  text-align: center;
+  color: #a0a0a0;
+  font-size: 0.9rem;
+  margin: 0;
+  padding-top: 2rem;
+  border-top: 1px solid #333;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .rooms-container {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 2rem;
+  }
+
+  .welcome-title {
+    font-size: 2.2rem;
+  }
+
+  .section-header h3 {
+    font-size: 1.6rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .rooms-container {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+
+  .welcome-section {
+    padding: 3rem 1.5rem;
+  }
+
+  .welcome-title {
+    font-size: 1.8rem;
+  }
+
+  .welcome-subtitle {
+    font-size: 1rem;
+  }
+
+  .chat-rooms-section,
+  .worldwide-rooms-section {
+    padding: 2.5rem 1.5rem;
+  }
+
+  .section-header h3 {
+    font-size: 1.4rem;
+  }
+
+  .room-card {
+    padding: 2rem;
+  }
+
+  .room-card h4 {
+    font-size: 1.2rem;
+  }
+
+  .room-card p {
+    font-size: 0.9rem;
+  }
+
+  .enter-btn,
+  .join-btn {
+    padding: 0.7rem 1.5rem;
+    font-size: 0.85rem;
+  }
+
+  .quotes-container {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .user-footer {
+    padding: 2.5rem 1.5rem 1.5rem;
+  }
+
+  .quote {
+    padding: 2rem;
+  }
+
+  .quote p {
+    font-size: 0.95rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .rooms-container {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .welcome-section {
+    padding: 2rem 1rem;
+  }
+
+  .welcome-title {
+    font-size: 1.4rem;
+  }
+
+  .welcome-subtitle {
+    font-size: 0.9rem;
+  }
+
+  .chat-rooms-section,
+  .worldwide-rooms-section {
+    padding: 2rem 1rem;
+  }
+
+  .section-header h3 {
+    font-size: 1.2rem;
+  }
+
+  .room-card {
+    padding: 1.5rem;
+  }
+
+  .room-card h4 {
+    font-size: 1.1rem;
+  }
+
+  .room-card p {
+    font-size: 0.85rem;
+  }
+
+  .enter-btn,
+  .join-btn {
+    padding: 0.6rem 1.2rem;
+    font-size: 0.8rem;
+  }
+
+  .quotes-container {
+    grid-template-columns: 1fr;
+  }
+
+  .quote {
+    padding: 1.5rem;
+    border-left: 4px solid #4ade80;
+  }
+
+  .quote p {
+    font-size: 0.85rem;
+  }
+
+  .user-footer {
+    padding: 1.5rem 1rem;
+  }
+
+  .footer-copyright {
+    padding-top: 1.5rem;
+  }
+}
