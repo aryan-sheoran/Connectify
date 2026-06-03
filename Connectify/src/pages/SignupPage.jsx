@@ -26,8 +26,9 @@ function SignupPage() {
       alert('Passwords do not match!');
       return;
     }
-    // Store username in localStorage
+    // Store username and email in localStorage
     localStorage.setItem('username', formData.username);
+    localStorage.setItem('email', formData.email);
     // Redirect to user home page
     navigate('/user-home');
   };
