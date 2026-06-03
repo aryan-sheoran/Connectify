@@ -90,8 +90,7 @@ function FindChatRoomPage() {
   });
 
   const handleJoinRoom = (roomId) => {
-    console.log('Joining room:', roomId);
-    // Here you would typically make an API call to join the room
+    navigate(`/chat-room/${roomId}`);
   };
 
   const handleSearch = (e) => {

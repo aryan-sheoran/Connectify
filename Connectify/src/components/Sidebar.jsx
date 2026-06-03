@@ -50,15 +50,6 @@ function Sidebar() {
               <span className="menu-text">Find Chat Room</span>
             </button>
           </li>
-          <li className="menu-item">
-            <button 
-              className={`menu-btn ${location.pathname === '/settings' ? 'active' : ''}`}
-              onClick={() => navigate('/settings')}
-            >
-              <span className="menu-icon-dot"></span>
-              <span className="menu-text">Settings</span>
-            </button>
-          </li>
           <li className="menu-item logout-item">
             <button className="menu-btn logout-menu-btn" onClick={handleLogout}>
               <span className="menu-icon-dot"></span>

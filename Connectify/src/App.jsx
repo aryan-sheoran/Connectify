@@ -5,6 +5,9 @@ import SignupPage from './pages/SignupPage'
 import UserHomePage from './pages/UserHomePage'
 import CreateChatRoomPage from './pages/CreateChatRoomPage'
 import FindChatRoomPage from './pages/FindChatRoomPage'
+import ProfilePage from './pages/ProfilePage'
+import ChatRoomPage from './pages/ChatRoomPage'
+import ManageChatRoomPage from './pages/ManageChatRoomPage'
 import './App.css'
 
 function App() {
@@ -17,6 +20,9 @@ function App() {
         <Route path="/user-home" element={<UserHomePage />} />
         <Route path="/create-room" element={<CreateChatRoomPage />} />
         <Route path="/find-room" element={<FindChatRoomPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/chat-room/:roomId" element={<ChatRoomPage />} />
+        <Route path="/manage-room/:roomId" element={<ManageChatRoomPage />} />
       </Routes>
     </BrowserRouter>
   )

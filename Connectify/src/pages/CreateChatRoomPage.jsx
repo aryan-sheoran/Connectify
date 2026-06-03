@@ -43,8 +43,8 @@ function CreateChatRoomPage() {
     e.preventDefault();
     // Here you would typically send the form data to your backend
     console.log('Form submitted:', formData);
-    // For now, redirect back to home
-    navigate('/user-home');
+    // For now, redirect to the newly created room (e.g., room ID 1)
+    navigate('/chat-room/1');
   };
 
   return (
