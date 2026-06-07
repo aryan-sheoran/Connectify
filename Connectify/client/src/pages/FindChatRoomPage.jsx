@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
+import api from '../api';
 import '../styles/FindChatRoomPage.css';
 
 function FindChatRoomPage() {
@@ -8,94 +9,65 @@ function FindChatRoomPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchName, setSearchName] = useState('');
   const [searchId, setSearchId] = useState('');
+  
+  const [filteredRooms, setFilteredRooms] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [initialLoad, setInitialLoad] = useState(true);
 
-  // Mock data - In a real app, this would come from your backend
-  const allChatRooms = [
-    {
-      id: 'ROOM001',
-      name: 'Tech Enthusiasts',
-      slogan: 'For tech lovers',
-      description: 'A room dedicated to technology discussions, coding, and innovation.',
-      image: 'https://via.placeholder.com/300x200?text=Tech+Enthusiasts',
-      type: 'public',
-      members: 45,
-      maxMembers: null,
-    },
-    {
-      id: 'ROOM002',
-      name: 'Gaming Zone',
-      slogan: 'Game on!',
-      description: 'Discuss your favorite games, share tips, and find gaming buddies.',
-      image: 'https://via.placeholder.com/300x200?text=Gaming+Zone',
-      type: 'public',
-      members: 32,
-      maxMembers: null,
-    },
-    {
-      id: 'ROOM003',
-      name: 'Music Lovers',
-      slogan: 'Feel the beat',
-      description: 'Share your favorite music, playlists, and discuss artists.',
-      image: 'https://via.placeholder.com/300x200?text=Music+Lovers',
-      type: 'public',
-      members: 28,
-      maxMembers: null,
-    },
-    {
-      id: 'ROOM004',
-      name: 'Global Chat',
-      slogan: 'Connect with the world',
-      description: 'A worldwide community for general conversations and making friends.',
-      image: 'https://via.placeholder.com/300x200?text=Global+Chat',
-      type: 'public',
-      members: 156,
-      maxMembers: null,
-    },
-    {
-      id: 'ROOM005',
-      name: 'Random Talks',
-      slogan: 'Anything goes',
-      description: 'A space for random discussions and unexpected conversations.',
-      image: 'https://via.placeholder.com/300x200?text=Random+Talks',
-      type: 'public',
-      members: 89,
-      maxMembers: null,
-    },
-    {
-      id: 'ROOM006',
-      name: 'Art & Design',
-      slogan: 'Create and inspire',
-      description: 'Share your artistic work, get feedback, and discuss design trends.',
-      image: 'https://via.placeholder.com/300x200?text=Art+and+Design',
-      type: 'public',
-      members: 34,
-      maxMembers: null,
-    },
-  ];
-
-  // Filter chat rooms based on search criteria
-  const filteredRooms = allChatRooms.filter(room => {
-    const nameMatch = room.name.toLowerCase().includes(searchName.toLowerCase());
-    const idMatch = room.id.toLowerCase().includes(searchId.toLowerCase());
-    
-    // If both fields are empty, show all rooms
-    if (!searchName && !searchId) return true;
-    
-    // If one field is filled, match that field
-    if (searchName && !searchId) return nameMatch;
-    if (!searchName && searchId) return idMatch;
-    
-    // If both fields are filled, both must match
-    return nameMatch && idMatch;
-  });
+  // Fetch all public rooms initially
+  useEffect(() => {
+    const fetchAllRooms = async () => {
+      setLoading(true);
+      try {
+        const res = await api.get('/rooms');
+        if (res.data.success) {
+          setFilteredRooms(res.data.rooms);
+        }
+      } catch (error) {
+        console.error('Failed to load initial rooms:', error);
+      } finally {
+        setLoading(false);
+        setInitialLoad(false);
+      }
+    };
+    fetchAllRooms();
+  }, []);
 
   const handleJoinRoom = (roomId) => {
     navigate(`/chat-room/${roomId}`);
   };
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    // Search is already handled by the filter above
+  const handleSearch = async (e) => {
+    if (e) e.preventDefault();
+    setLoading(true);
+    
+    // If search criteria is empty, just fetch all rooms
+    if (!searchName.trim() && !searchId.trim()) {
+      try {
+        const res = await api.get('/rooms');
+        if (res.data.success) {
+          setFilteredRooms(res.data.rooms);
+        }
+      } catch (error) {
+        console.error('Failed to load rooms:', error);
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    try {
+      const res = await api.get('/search/rooms', {
+        params: { name: searchName.trim(), id: searchId.trim() }
+      });
+      if (res.data.success) {
+        setFilteredRooms(res.data.results);
+      }
+    } catch (error) {
+      console.error('Search failed:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -142,43 +114,55 @@ function FindChatRoomPage() {
                       onChange={(e) => setSearchId(e.target.value)}
                     />
                   </div>
-                  <button type="submit" className="search-btn">Search</button>
+                  <button type="submit" className="search-btn" disabled={loading}>
+                    {loading ? 'Searching...' : 'Search'}
+                  </button>
                 </div>
               </form>
 
               {/* Results Count */}
-              <div className="results-info">
-                <p>Found <span className="count">{filteredRooms.length}</span> chat room(s)</p>
-                {(searchName || searchId) && (
-                  <button 
-                    className="clear-search" 
-                    onClick={() => {
-                      setSearchName('');
-                      setSearchId('');
-                    }}
-                  >
-                    Clear filters
-                  </button>
-                )}
-              </div>
+              {!initialLoad && (
+                <div className="results-info">
+                  <p>Found <span className="count">{filteredRooms.length}</span> chat room(s)</p>
+                  {(searchName || searchId) && (
+                    <button 
+                      className="clear-search" 
+                      onClick={() => {
+                        setSearchName('');
+                        setSearchId('');
+                        // Call search with empty fields to reset
+                        setTimeout(() => handleSearch(), 0);
+                      }}
+                    >
+                      Clear filters
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* Chat Rooms Grid */}
               <div className="chat-rooms-grid">
-                {filteredRooms.length > 0 ? (
+                {loading && initialLoad ? (
+                   <div style={{ textAlign: 'center', padding: '2rem', width: '100%' }}>Loading rooms...</div>
+                ) : filteredRooms.length > 0 ? (
                   filteredRooms.map(room => (
                     <div key={room.id} className="room-card-item">
                       <div className="room-image-wrapper">
-                        <img src={room.image} alt={room.name} className="room-image" />
-                        <span className={`room-badge ${room.type}`}>{room.type.toUpperCase()}</span>
+                        {room.imageUrl ? (
+                           <img src={room.imageUrl} alt={room.name} className="room-image" style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+                        ) : (
+                          <div style={{width: '100%', height: '100%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem', color: 'white'}}>{room.name.charAt(0).toUpperCase()}</div>
+                        )}
+                        <span className={`room-badge ${room.type || 'public'}`}>{(room.type || 'public').toUpperCase()}</span>
                       </div>
                       <div className="room-info">
                         <h3 className="room-name">{room.name}</h3>
-                        <p className="room-slogan">"{room.slogan}"</p>
+                        <p className="room-slogan">"{room.slogan || 'Connect and chat'}"</p>
                         <p className="room-id">ID: <span>{room.id}</span></p>
                         <p className="room-description">{room.description}</p>
                         <div className="room-footer">
                           <span className="members-info">
-                            👥 {room.members} member{room.members !== 1 ? 's' : ''} online
+                            👥 {room.members || 0} member{(room.members !== 1) ? 's' : ''} online
                           </span>
                           <button 
                             className="join-btn"
@@ -191,7 +175,7 @@ function FindChatRoomPage() {
                     </div>
                   ))
                 ) : (
-                  <div className="no-results">
+                  <div className="no-results" style={{ width: '100%', gridColumn: '1 / -1' }}>
                     <div className="no-results-icon">🔍</div>
                     <h3>No rooms found</h3>
                     <p>Try adjusting your search criteria</p>
@@ -200,6 +184,7 @@ function FindChatRoomPage() {
                       onClick={() => {
                         setSearchName('');
                         setSearchId('');
+                        setTimeout(() => handleSearch(), 0);
                       }}
                     >
                       View All Rooms

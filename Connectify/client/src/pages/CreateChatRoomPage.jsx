@@ -1,11 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
+import api from '../api';
 import '../styles/CreateChatRoomPage.css';
 
 function CreateChatRoomPage() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  
   const [formData, setFormData] = useState({
     roomName: '',
     description: '',
@@ -39,12 +43,42 @@ function CreateChatRoomPage() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Here you would typically send the form data to your backend
-    console.log('Form submitted:', formData);
-    // For now, redirect to the newly created room (e.g., room ID 1)
-    navigate('/chat-room/1');
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Create FormData object to handle image upload
+      const data = new FormData();
+      data.append('roomName', formData.roomName);
+      data.append('description', formData.description);
+      if (formData.slogan) data.append('slogan', formData.slogan);
+      data.append('isPrivate', formData.isPrivate);
+      if (formData.isPrivate) data.append('maxMembers', formData.maxMembers);
+      
+      // The backend expects the file field to be named 'image'
+      if (formData.image) {
+        data.append('image', formData.image);
+      }
+
+      // Ensure proper headers for multipart/form-data
+      const response = await api.post('/rooms', data, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (response.data.success) {
+        // Redirect to the newly created room
+        navigate(`/chat-room/${response.data.room.id}`);
+      }
+    } catch (err) {
+      console.error('Failed to create room:', err);
+      setError(err.response?.data?.message || 'Failed to create room. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -67,6 +101,8 @@ function CreateChatRoomPage() {
                 <h2 className="create-room-title">Create a Chat Room</h2>
                 <p className="create-room-subtitle">Set up a new chat room and start connecting with others</p>
               </div>
+
+              {error && <div className="error-message" style={{ color: 'red', marginBottom: '1rem', textAlign: 'center' }}>{error}</div>}
 
               <form className="create-room-form" onSubmit={handleSubmit}>
                 {/* Room Name */}
@@ -192,11 +228,11 @@ function CreateChatRoomPage() {
 
                 {/* Form Actions */}
                 <div className="form-actions">
-                  <button type="button" className="btn-cancel" onClick={() => navigate('/user-home')}>
+                  <button type="button" className="btn-cancel" onClick={() => navigate('/user-home')} disabled={loading}>
                     Cancel
                   </button>
-                  <button type="submit" className="btn-create">
-                    Create Chat Room
+                  <button type="submit" className="btn-create" disabled={loading}>
+                    {loading ? 'Creating...' : 'Create Chat Room'}
                   </button>
                 </div>
               </form>

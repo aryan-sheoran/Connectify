@@ -1,4 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { AuthProvider } from './context/AuthContext'
+import ProtectedRoute from './components/ProtectedRoute'
 import IntroPage from './pages/IntroPage'
 import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
@@ -12,21 +14,27 @@ import './App.css'
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<IntroPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignupPage />} />
-        <Route path="/user-home" element={<UserHomePage />} />
-        <Route path="/create-room" element={<CreateChatRoomPage />} />
-        <Route path="/find-room" element={<FindChatRoomPage />} />
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/chat-room/:roomId" element={<ChatRoomPage />} />
-        <Route path="/manage-room/:roomId" element={<ManageChatRoomPage />} />
-      </Routes>
-    </BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/" element={<IntroPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
+
+          {/* Protected Routes */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/user-home" element={<UserHomePage />} />
+            <Route path="/create-room" element={<CreateChatRoomPage />} />
+            <Route path="/find-room" element={<FindChatRoomPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/chat-room/:roomId" element={<ChatRoomPage />} />
+            <Route path="/manage-room/:roomId" element={<ManageChatRoomPage />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   )
 }
-
 
 export default App

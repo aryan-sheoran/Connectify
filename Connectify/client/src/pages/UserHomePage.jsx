@@ -1,15 +1,48 @@
 import { useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
+import { useAuth } from '../context/AuthContext';
+import api from '../api';
 import '../styles/UserHomePage.css';
 
 function UserHomePage() {
   const navigate = useNavigate();
-  const username = localStorage.getItem('username') || 'User';
+  const { currentUser, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [joinedRooms, setJoinedRooms] = useState([]);
+  const [publicRooms, setPublicRooms] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleLogout = () => {
-    localStorage.removeItem('username');
+  const username = currentUser?.username || 'User';
+
+  useEffect(() => {
+    const fetchRooms = async () => {
+      try {
+        // Fetch joined rooms
+        const joinedRes = await api.get('/users/me/rooms');
+        if (joinedRes.data.success) {
+          setJoinedRooms(joinedRes.data.rooms);
+        }
+
+        // Fetch public worldwide rooms
+        const publicRes = await api.get('/rooms');
+        if (publicRes.data.success) {
+          setPublicRooms(publicRes.data.rooms);
+        }
+      } catch (error) {
+        console.error('Failed to fetch rooms', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (currentUser) {
+      fetchRooms();
+    }
+  }, [currentUser]);
+
+  const handleLogout = async () => {
+    await logout();
     navigate('/');
   };
 
@@ -33,133 +66,75 @@ function UserHomePage() {
           <p className="welcome-subtitle">Connect, Chat, and Share Anonymously</p>
         </div>
 
-        <section className="chat-rooms-section">
-          <div className="section-header">
-            <h3>Joined Chat Rooms</h3>
-          </div>
-          <div className="chat-rooms-grid">
-            <div className="room-card-item">
-              <div className="room-image-wrapper">
-                <div style={{width: '100%', height: '100%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem'}}>T</div>
-                <span className="room-badge public">JOINED</span>
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '2rem' }}>Loading rooms...</div>
+        ) : (
+          <>
+            <section className="chat-rooms-section">
+              <div className="section-header">
+                <h3>Joined Chat Rooms</h3>
               </div>
-              <div className="room-info">
-                <h3 className="room-name">Tech Enthusiasts</h3>
-                <p className="room-slogan">"Connect, Learn, and Innovate Together"</p>
-                <p className="room-id">ID: <span>ROOM001</span></p>
-                <p className="room-description">A community for tech enthusiasts to discuss latest technologies</p>
-                <div className="room-footer">
-                  <span className="members-info">👥 12 members online</span>
-                  <button className="join-btn" onClick={() => navigate('/chat-room/1')}>Enter</button>
+              {joinedRooms.length > 0 ? (
+                <div className="chat-rooms-grid">
+                  {joinedRooms.map(room => (
+                    <div key={room.id} className="room-card-item">
+                      <div className="room-image-wrapper">
+                        {room.imageUrl ? (
+                          <img src={room.imageUrl} alt={room.name} style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+                        ) : (
+                          <div style={{width: '100%', height: '100%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem', color: 'white'}}>{room.name.charAt(0).toUpperCase()}</div>
+                        )}
+                        <span className="room-badge public">JOINED</span>
+                      </div>
+                      <div className="room-info">
+                        <h3 className="room-name">{room.name}</h3>
+                        <p className="room-slogan">"{room.slogan || 'Connect and chat'}"</p>
+                        <p className="room-id">ID: <span>{room.id}</span></p>
+                        <p className="room-description">{room.description}</p>
+                        <div className="room-footer">
+                          <span className="members-info">👥 {room.members || 0} members</span>
+                          <button className="join-btn" onClick={() => navigate(`/chat-room/${room.id}`)}>Enter</button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
-            </div>
-            <div className="room-card-item">
-              <div className="room-image-wrapper">
-                <div style={{width: '100%', height: '100%', background: 'linear-gradient(135deg, #764ba2 0%, #667eea 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem'}}>G</div>
-                <span className="room-badge public">JOINED</span>
-              </div>
-              <div className="room-info">
-                <h3 className="room-name">Gaming Zone</h3>
-                <p className="room-slogan">"Game on!"</p>
-                <p className="room-id">ID: <span>ROOM002</span></p>
-                <p className="room-description">Discuss your favorite games and find gaming buddies</p>
-                <div className="room-footer">
-                  <span className="members-info">👥 8 members online</span>
-                  <button className="join-btn" onClick={() => navigate('/chat-room/2')}>Enter</button>
-                </div>
-              </div>
-            </div>
-            <div className="room-card-item">
-              <div className="room-image-wrapper">
-                <div style={{width: '100%', height: '100%', background: 'linear-gradient(135deg, #764ba2 0%, #764ba2 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem'}}>M</div>
-                <span className="room-badge public">JOINED</span>
-              </div>
-              <div className="room-info">
-                <h3 className="room-name">Music Lovers</h3>
-                <p className="room-slogan">"Feel the beat"</p>
-                <p className="room-id">ID: <span>ROOM003</span></p>
-                <p className="room-description">Share your favorite music and discuss artists</p>
-                <div className="room-footer">
-                  <span className="members-info">👥 15 members online</span>
-                  <button className="join-btn" onClick={() => navigate('/chat-room/3')}>Enter</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+              ) : (
+                <p>You haven't joined any rooms yet. Browse public rooms below!</p>
+              )}
+            </section>
 
-        <section className="worldwide-rooms-section">
-          <div className="section-header">
-            <h3>World Wide Chat Rooms</h3>
-          </div>
-          <div className="chat-rooms-grid">
-            <div className="room-card-item">
-              <div className="room-image-wrapper">
-                <div style={{width: '100%', height: '100%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem'}}>G</div>
-                <span className="room-badge public">PUBLIC</span>
+            <section className="worldwide-rooms-section">
+              <div className="section-header">
+                <h3>World Wide Chat Rooms</h3>
               </div>
-              <div className="room-info">
-                <h3 className="room-name">Global Chat</h3>
-                <p className="room-slogan">"Connect with the world"</p>
-                <p className="room-id">ID: <span>ROOM004</span></p>
-                <p className="room-description">A worldwide community for general conversations</p>
-                <div className="room-footer">
-                  <span className="members-info">👥 256 members online</span>
-                  <button className="join-btn" onClick={() => navigate('/chat-room/4')}>Join Room</button>
-                </div>
+              <div className="chat-rooms-grid">
+                {publicRooms.map(room => (
+                  <div key={room.id} className="room-card-item">
+                    <div className="room-image-wrapper">
+                      {room.imageUrl ? (
+                          <img src={room.imageUrl} alt={room.name} style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+                        ) : (
+                          <div style={{width: '100%', height: '100%', background: 'linear-gradient(135deg, #764ba2 0%, #667eea 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem', color: 'white'}}>{room.name.charAt(0).toUpperCase()}</div>
+                        )}
+                      <span className="room-badge public">PUBLIC</span>
+                    </div>
+                    <div className="room-info">
+                      <h3 className="room-name">{room.name}</h3>
+                      <p className="room-slogan">"{room.slogan || 'Connect with the world'}"</p>
+                      <p className="room-id">ID: <span>{room.id}</span></p>
+                      <p className="room-description">{room.description}</p>
+                      <div className="room-footer">
+                        <span className="members-info">👥 {room.members || 0} members</span>
+                        <button className="join-btn" onClick={() => navigate(`/chat-room/${room.id}`)}>Join Room</button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-            <div className="room-card-item">
-              <div className="room-image-wrapper">
-                <div style={{width: '100%', height: '100%', background: 'linear-gradient(135deg, #764ba2 0%, #667eea 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem'}}>R</div>
-                <span className="room-badge public">PUBLIC</span>
-              </div>
-              <div className="room-info">
-                <h3 className="room-name">Random Talks</h3>
-                <p className="room-slogan">"Anything goes"</p>
-                <p className="room-id">ID: <span>ROOM005</span></p>
-                <p className="room-description">A space for random discussions and conversations</p>
-                <div className="room-footer">
-                  <span className="members-info">👥 189 members online</span>
-                  <button className="join-btn" onClick={() => navigate('/chat-room/5')}>Join Room</button>
-                </div>
-              </div>
-            </div>
-            <div className="room-card-item">
-              <div className="room-image-wrapper">
-                <div style={{width: '100%', height: '100%', background: 'linear-gradient(135deg, #764ba2 0%, #764ba2 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem'}}>A</div>
-                <span className="room-badge public">PUBLIC</span>
-              </div>
-              <div className="room-info">
-                <h3 className="room-name">Art & Design</h3>
-                <p className="room-slogan">"Create and inspire"</p>
-                <p className="room-id">ID: <span>ROOM006</span></p>
-                <p className="room-description">Share your artistic work and discuss design trends</p>
-                <div className="room-footer">
-                  <span className="members-info">👥 94 members online</span>
-                  <button className="join-btn" onClick={() => navigate('/chat-room/6')}>Join Room</button>
-                </div>
-              </div>
-            </div>
-            <div className="room-card-item">
-              <div className="room-image-wrapper">
-                <div style={{width: '100%', height: '100%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem'}}>S</div>
-                <span className="room-badge public">PUBLIC</span>
-              </div>
-              <div className="room-info">
-                <h3 className="room-name">Sports Discussion</h3>
-                <p className="room-slogan">"Score big in conversations"</p>
-                <p className="room-id">ID: <span>ROOM007</span></p>
-                <p className="room-description">Discuss your favorite sports and teams</p>
-                <div className="room-footer">
-                  <span className="members-info">👥 156 members online</span>
-                  <button className="join-btn" onClick={() => navigate('/chat-room/7')}>Join Room</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+            </section>
+          </>
+        )}
       </main>
       </div>
 
