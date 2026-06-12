@@ -50,8 +50,24 @@ CREATE TABLE IF NOT EXISTS room_members (
     PRIMARY KEY (user_id, room_id)
 );
 
--- NOTE: messages are stored in MongoDB (connectify.messages collection),
--- not PostgreSQL. See config/mongodb.js for the collection + index setup.
+-- ── Messages ──────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS messages (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    room_id         VARCHAR(20) REFERENCES rooms(id) ON DELETE CASCADE,
+    sender_id       UUID REFERENCES users(id) ON DELETE SET NULL,
+    sender_username VARCHAR(50),
+    sender_avatar   TEXT,
+    content         TEXT NOT NULL,
+    sent_at         TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ── Message Reactions ─────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS message_reactions (
+    message_id UUID REFERENCES messages(id) ON DELETE CASCADE,
+    user_id    UUID REFERENCES users(id) ON DELETE CASCADE,
+    emoji      VARCHAR(10) NOT NULL,
+    PRIMARY KEY (message_id, user_id, emoji)
+);
 
 -- ── Indexes ───────────────────────────────────────────────────────────────
 CREATE INDEX IF NOT EXISTS idx_room_members_user   ON room_members(user_id);
@@ -59,3 +75,4 @@ CREATE INDEX IF NOT EXISTS idx_room_members_room   ON room_members(room_id);
 CREATE INDEX IF NOT EXISTS idx_rooms_type          ON rooms(type);
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user ON refresh_tokens(user_id);
 CREATE INDEX IF NOT EXISTS idx_users_google_id     ON users(google_id);
+CREATE INDEX IF NOT EXISTS idx_messages_room_time  ON messages(room_id, sent_at DESC);

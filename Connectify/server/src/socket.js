@@ -8,16 +8,13 @@
 //   disconnect   → Redis DEL online presence key
 
 const { Server }            = require('socket.io');
-const { ObjectId }          = require('mongodb');
 const { verifyAccessToken } = require('./utils/jwt');
 const pool                  = require('./config/db');        // PostgreSQL
 const redis                 = require('./config/redis');     // Redis
-const { getMongo }          = require('./config/mongodb');   // MongoDB
-
 const initSocket = (httpServer) => {
   const io = new Server(httpServer, {
     cors: {
-      origin:      process.env.CLIENT_URL || 'http://localhost:3000',
+      origin:      process.env.CLIENT_URL || 'http://localhost:5173',
       methods:     ['GET', 'POST'],
       credentials: true,
     },
@@ -169,27 +166,21 @@ const initSocket = (httpServer) => {
           socket.avatarUrl = userRow.rows[0]?.avatar_url || null;
         }
 
-        // Write to MongoDB
-        const db  = getMongo();
+        // Write to PostgreSQL
         const now = new Date();
 
-        const doc = {
-          room_id:         roomKey,
-          sender_id:       socket.userId,
-          sender_username: socket.username,
-          sender_avatar:   socket.avatarUrl,
-          content:         sanitizedContent,
-          reactions:       [],          // empty array ready for emoji reactions
-          sent_at:         now,
-        };
-
-        const result = await db.collection('messages').insertOne(doc);
+        const insertResult = await pool.query(
+          `INSERT INTO messages (room_id, sender_id, sender_username, sender_avatar, content, sent_at)
+           VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+          [roomKey, socket.userId, socket.username, socket.avatarUrl, sanitizedContent, now]
+        );
+        const msgId = insertResult.rows[0].id;
 
         // Refresh online presence TTL on every message
         await setOnline(socket.userId, roomKey);
 
         const payload = {
-          id:             result.insertedId.toString(),
+          id:             msgId,
           roomId:         roomKey,
           senderId:       socket.userId,
           senderUsername: socket.username,
@@ -220,18 +211,12 @@ const initSocket = (httpServer) => {
 
         const roomKey = roomId.toUpperCase();
 
-        let msgId;
-        try { msgId = new ObjectId(messageId); }
-        catch { return callback?.({ success: false, message: 'Invalid messageId.' }); }
+        const deleteResult = await pool.query(
+          'DELETE FROM messages WHERE id = $1 AND room_id = $2 AND sender_id = $3 RETURNING id',
+          [messageId, roomKey, socket.userId]
+        );
 
-        const db   = getMongo();
-        const result = await db.collection('messages').deleteOne({
-          _id:       msgId,
-          room_id:   roomKey,
-          sender_id: socket.userId,   // sender ownership enforced here
-        });
-
-        if (result.deletedCount === 0) {
+        if (deleteResult.rowCount === 0) {
           return callback?.({ success: false, message: 'Message not found or not yours.' });
         }
 

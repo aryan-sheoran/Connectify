@@ -96,6 +96,20 @@ const createRoom = async (req, res, next) => {
   try {
     const { roomName, description, slogan, isPrivate, maxMembers } = req.body;
 
+    // Check 5-room limit
+    const countResult = await pool.query(
+      'SELECT COUNT(*) FROM rooms WHERE created_by = $1',
+      [req.user.id]
+    );
+    const roomsCreated = parseInt(countResult.rows[0].count);
+
+    if (roomsCreated >= 5) {
+      return res.status(400).json({
+        success: false,
+        message: 'already 5 chat rooms',
+      });
+    }
+
     // Image is required
     if (!req.file) {
       return res.status(400).json({

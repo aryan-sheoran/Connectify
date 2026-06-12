@@ -7,10 +7,17 @@ import '../styles/ProfilePage.css';
 
 function ProfilePage() {
   const navigate = useNavigate();
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, checkAuth } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [ownedChatRooms, setOwnedChatRooms] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Profile editing states
+  const [isEditing, setIsEditing] = useState(false);
+  const [newUsername, setNewUsername] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
 
   const username = currentUser?.username || 'User';
   const email = currentUser?.email || 'email@example.com';
@@ -47,6 +54,52 @@ function ProfilePage() {
     navigate('/');
   };
 
+  const handleStartEdit = () => {
+    setNewUsername(username);
+    setIsEditing(true);
+    setError(null);
+    setSuccessMessage(null);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setError(null);
+  };
+
+  const handleSaveUsername = async (e) => {
+    e.preventDefault();
+    const trimmedUsername = newUsername.trim();
+    if (trimmedUsername === '') return;
+    if (trimmedUsername === username) {
+      setIsEditing(false);
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      const response = await api.put('/users/me', { username: trimmedUsername });
+      if (response.data.success) {
+        await checkAuth(); // Refresh currentUser context
+        setIsEditing(false);
+        setSuccessMessage('Username updated successfully!');
+        setTimeout(() => setSuccessMessage(null), 3000);
+      }
+    } catch (err) {
+      console.error("Failed to update username:", err);
+      // Express validator returns error array inside err.response.data.errors
+      if (err.response?.data?.errors) {
+        setError(err.response.data.errors[0]?.message || 'Invalid username format.');
+      } else {
+        setError(err.response?.data?.message || 'Failed to update username.');
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="profile-page">
       <div className="page-content">
@@ -75,7 +128,40 @@ function ProfilePage() {
               </div>
               
               <div className="profile-info">
-                <h1 className="profile-username">{username}</h1>
+                {isEditing ? (
+                  <form onSubmit={handleSaveUsername} className="edit-username-form">
+                    <input
+                      type="text"
+                      value={newUsername}
+                      onChange={(e) => {
+                        setNewUsername(e.target.value);
+                        setError(null);
+                      }}
+                      className="edit-username-input"
+                      placeholder="Choose username"
+                      maxLength={50}
+                      autoFocus
+                      required
+                    />
+                    <div className="edit-username-actions">
+                      <button type="submit" className="save-username-btn" disabled={saving}>
+                        {saving ? 'Saving...' : 'Save'}
+                      </button>
+                      <button type="button" className="cancel-username-btn" onClick={handleCancelEdit} disabled={saving}>
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="profile-username-wrapper">
+                    <h1 className="profile-username">{username}</h1>
+                    <button onClick={handleStartEdit} className="edit-profile-btn" title="Edit Username">
+                      ✏️
+                    </button>
+                  </div>
+                )}
+                {error && <div className="profile-alert error">{error}</div>}
+                {successMessage && <div className="profile-alert success">{successMessage}</div>}
                 <div className="profile-detail">
                   <span className="detail-icon">✉️</span>
                   <span className="detail-text">{email}</span>
