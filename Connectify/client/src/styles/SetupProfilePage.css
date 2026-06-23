@@ -1,0 +1,218 @@
+/* SetupProfilePage.css
+   Styles for the new user profile setup page (username + tagline).
+   Consistent with the existing dark design system.
+*/
+
+/* ── Page wrapper ─────────────────────────────────────────────────────────── */
+.setup-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  color: #e0e0e0;
+}
+
+/* ── Card ─────────────────────────────────────────────────────────────────── */
+.setup-card {
+  width: 100%;
+  max-width: 520px;
+  background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+  border-radius: 16px;
+  padding: 3rem 2.5rem;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  border: 1px solid #2a2a2a;
+  animation: fadeInUp 0.4s ease;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0);     }
+}
+
+/* ── Avatar preview ───────────────────────────────────────────────────────── */
+.setup-avatar {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.setup-avatar img {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  border: 2px solid #333;
+  object-fit: cover;
+}
+
+.setup-avatar-placeholder {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
+  border: 2px solid #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.2rem;
+  color: #555;
+}
+
+/* ── Headings ─────────────────────────────────────────────────────────────── */
+.setup-card h1 {
+  font-size: 1.8rem;
+  color: #e0e0e0;
+  margin: 0 0 0.4rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.setup-subtitle {
+  color: #777;
+  font-size: 0.9rem;
+  text-align: center;
+  margin: 0 0 2.2rem;
+  line-height: 1.5;
+}
+
+/* ── Form fields ──────────────────────────────────────────────────────────── */
+.setup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+}
+
+.setup-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.setup-field label {
+  font-size: 0.88rem;
+  color: #999;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+
+.setup-field input,
+.setup-field textarea {
+  background: #0a0a0a;
+  border: 1.5px solid #2a2a2a;
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  color: #e0e0e0;
+  font-size: 0.95rem;
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.setup-field input:focus,
+.setup-field textarea:focus {
+  outline: none;
+  border-color: #555;
+  box-shadow: 0 0 0 3px rgba(85, 85, 85, 0.15);
+}
+
+.setup-field input::placeholder,
+.setup-field textarea::placeholder {
+  color: #444;
+}
+
+.setup-field textarea {
+  resize: vertical;
+  min-height: 80px;
+  max-height: 140px;
+  line-height: 1.5;
+}
+
+/* ── Character counter ────────────────────────────────────────────────────── */
+.char-count {
+  font-size: 0.78rem;
+  color: #555;
+  text-align: right;
+  margin-top: -0.2rem;
+}
+
+.char-count.near-limit {
+  color: #e67e22;
+}
+
+/* ── Username validation hint ─────────────────────────────────────────────── */
+.input-hint {
+  font-size: 0.78rem;
+  color: #555;
+  margin-top: -0.2rem;
+}
+
+.input-hint.valid   { color: #27ae60; }
+.input-hint.invalid { color: #e74c3c; }
+
+/* ── Error message ────────────────────────────────────────────────────────── */
+.setup-error {
+  background: rgba(192, 57, 43, 0.12);
+  border: 1px solid rgba(192, 57, 43, 0.3);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  color: #e74c3c;
+  font-size: 0.88rem;
+}
+
+/* ── Submit button ────────────────────────────────────────────────────────── */
+.setup-submit-btn {
+  width: 100%;
+  padding: 1rem;
+  background: linear-gradient(135deg, #404040 0%, #303030 100%);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  letter-spacing: 0.3px;
+  margin-top: 0.5rem;
+}
+
+.setup-submit-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #505050 0%, #404040 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+.setup-submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ── Loading spinner ──────────────────────────────────────────────────────── */
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 0.7s linear infinite;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+@media (max-width: 540px) {
+  .setup-card {
+    padding: 2rem 1.5rem;
+  }
+  .setup-card h1 {
+    font-size: 1.5rem;
+  }
+}

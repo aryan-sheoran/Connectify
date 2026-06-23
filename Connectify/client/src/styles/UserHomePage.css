@@ -30,95 +30,6 @@
   display: none;
 }
 
-/* User Navbar */
-.user-navbar {
-  background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
-  padding: 1rem 1.5rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-  position: relative;
-  z-index: 100;
-  flex-shrink: 0;
-}
-
-.user-navbar-content {
-  max-width: 1400px;
-  margin: 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.navbar-left {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.navbar-sidebar-toggle {
-  background: none;
-  border: none;
-  color: #8b92a0;
-  font-size: 1.5rem;
-  cursor: pointer;
-  padding: 0.4rem 0.6rem;
-  border-radius: 6px;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.navbar-sidebar-toggle:hover {
-  color: #d0d5db;
-  background: rgba(255,255,255,0.05);
-}
-
-.user-logo {
-  font-size: 1.6rem;
-  font-weight: 900;
-  letter-spacing: 3px;
-  color: #b0b0b0;
-  margin: 0;
-  white-space: nowrap;
-}
-
-.user-nav-right {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-}
-
-.user-greeting {
-  font-size: 0.95rem;
-  color: #a0a0a0;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 200px;
-}
-
-.logout-btn {
-  padding: 0.6rem 1.2rem;
-  border: none;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  background: linear-gradient(135deg, #404040 0%, #303030 100%);
-  color: white;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(64, 64, 64, 0.5);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.logout-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(64, 64, 64, 0.7);
-}
 
 /* Main Content */
 .user-main {
@@ -495,18 +406,6 @@
     flex-direction: column;
   }
 
-  .user-navbar {
-    padding: 0.8rem 1rem;
-  }
-
-  .user-logo {
-    font-size: 1.3rem;
-    letter-spacing: 2px;
-  }
-
-  .user-greeting {
-    display: none;
-  }
 
   .chat-rooms-grid,
   .rooms-container {
@@ -596,15 +495,6 @@
     font-size: 1.1rem;
   }
 
-  .user-logo {
-    font-size: 1.1rem;
-    letter-spacing: 1px;
-  }
-
-  .logout-btn {
-    padding: 0.5rem 0.9rem;
-    font-size: 0.82rem;
-  }
 
   .quote {
     padding: 1.2rem;

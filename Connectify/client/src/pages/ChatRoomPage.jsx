@@ -158,7 +158,12 @@ function ChatRoomPage() {
         <div className={`content-wrapper ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
           <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-          <div className="chat-room-container">
+          {/* Mobile details overlay backdrop */}
+          {detailsPanelOpen && (
+            <div className="details-overlay active" onClick={() => setDetailsPanelOpen(false)} />
+          )}
+
+          <div className={`chat-room-container ${detailsPanelOpen ? 'details-open' : 'details-closed'}`}>
             {/* Left Side - Room Details */}
             <aside className={`room-details-panel ${detailsPanelOpen ? 'panel-open' : ''}`}>
               <button className="back-to-rooms-btn" onClick={() => navigate('/user-home')}>
@@ -214,11 +219,6 @@ function ChatRoomPage() {
                 </div>
               </div>
             </aside>
-
-            {/* Mobile details overlay backdrop */}
-            {detailsPanelOpen && (
-              <div className="details-overlay" onClick={() => setDetailsPanelOpen(false)} />
-            )}
 
             {/* Right Side - Chat */}
             <section className="chat-panel">

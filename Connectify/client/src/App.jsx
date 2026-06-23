@@ -4,6 +4,8 @@ import ProtectedRoute from './components/ProtectedRoute'
 import IntroPage from './pages/IntroPage'
 import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
+import OtpVerifyPage from './pages/OtpVerifyPage'
+import SetupProfilePage from './pages/SetupProfilePage'
 import UserHomePage from './pages/UserHomePage'
 import CreateChatRoomPage from './pages/CreateChatRoomPage'
 import FindChatRoomPage from './pages/FindChatRoomPage'
@@ -21,6 +23,10 @@ function App() {
           <Route path="/" element={<IntroPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
+
+          {/* OTP & Profile Setup — semi-public (server enforces their own auth) */}
+          <Route path="/verify-otp" element={<OtpVerifyPage />} />
+          <Route path="/setup-profile" element={<SetupProfilePage />} />
 
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>

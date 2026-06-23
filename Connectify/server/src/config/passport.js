@@ -64,11 +64,13 @@ passport.use(
            ON CONFLICT (google_id) DO UPDATE
              SET email      = EXCLUDED.email,
                  avatar_url = EXCLUDED.avatar_url
-           RETURNING id, username, email, avatar_url`,
+           RETURNING id, username, email, avatar_url, profile_completed`,
           [googleId, username, email, avatarUrl]
         );
 
         const user = result.rows[0];
+        // Also expose the Google display name so we can personalise the OTP email
+        user.displayName = displayName;
 
         // Pass the user to Passport — available as req.user in the callback route
         return done(null, user);

@@ -1,16 +1,31 @@
 // controllers/authController.js
-// Handles the OAuth callback, token refresh, and logout.
+// Handles Google OAuth callback, OTP verification, profile setup,
+// token refresh, and logout.
 //
-// There is NO signup or login form anymore — identity comes from Google.
+// ── NEW Auth Flow ──────────────────────────────────────────────────────────
+//
+//  1. googleCallback  — Triggered after Google verifies identity.
+//                       Generates OTP, emails it, stores in Redis,
+//                       redirects browser to /verify-otp?token=<pendingToken>
+//
+//  2. verifyOtp       — POST /auth/verify-otp
+//                       Frontend sends { token, otp }.
+//                       On success:
+//                         • New user  → stores setup_token cookie → redirects /setup-profile
+//                         • Returning → issues full JWT cookies   → redirects /profile
+//
+//  3. completeProfile — POST /auth/complete-profile
+//                       Protected by setup_token cookie.
+//                       Saves username + tagline, marks profile_completed = true,
+//                       issues full JWT cookies → redirects /profile.
+//
+//  4. resendOtp       — POST /auth/resend-otp
+//                       Re-generates OTP for existing pendingToken session.
 //
 // Cookie strategy:
 //   access_token  — httpOnly, Secure, SameSite=Lax, maxAge 15 min
 //   refresh_token — httpOnly, Secure, SameSite=Lax, maxAge 7 days
-//
-// Why httpOnly cookies instead of localStorage?
-//   JavaScript cannot read httpOnly cookies, so XSS attacks cannot
-//   steal them. The browser attaches them automatically on every request
-//   to our domain, so the frontend never has to manage tokens manually.
+//   setup_token   — httpOnly, Secure, SameSite=Lax, maxAge 15 min (new users only)
 
 const pool  = require('../config/db');
 const redis = require('../config/redis');
@@ -19,56 +34,235 @@ const {
   signRefreshToken,
   verifyRefreshToken,
 } = require('../utils/jwt');
+const { generateOtp, storeOtp, verifyOtp, storeSetupToken, verifySetupToken } = require('../utils/otp');
+const { sendOtpEmail } = require('../utils/mailer');
 
-// Shared cookie options — applied to both token cookies
+// ── Cookie helpers ─────────────────────────────────────────────────────────
+
 const COOKIE_BASE = {
-  httpOnly: true,    // JS cannot read this cookie
-  secure:   process.env.NODE_ENV === 'production', // HTTPS only in prod
-  sameSite: 'lax',   // Sent on same-site requests + top-level navigation
+  httpOnly: true,
+  secure:   process.env.NODE_ENV === 'production',
+  sameSite: 'lax',
 };
 
 const ACCESS_COOKIE_OPTIONS = {
   ...COOKIE_BASE,
-  maxAge: 15 * 60 * 1000,           // 15 minutes in ms
+  maxAge: 15 * 60 * 1000,           // 15 minutes
 };
 
 const REFRESH_COOKIE_OPTIONS = {
   ...COOKIE_BASE,
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+};
+
+const SETUP_COOKIE_OPTIONS = {
+  ...COOKIE_BASE,
+  maxAge: 15 * 60 * 1000,           // 15 minutes — enough to complete setup form
+};
+
+/**
+ * Issues access + refresh JWT cookies and persists the refresh token in the DB.
+ * Extracted to avoid repetition in verifyOtp and completeProfile.
+ */
+const issueAuthCookies = async (res, user) => {
+  const accessToken  = signAccessToken ({ id: user.id, username: user.username });
+  const refreshToken = signRefreshToken({ id: user.id });
+
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  await pool.query(
+    `INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)`,
+    [user.id, refreshToken, expiresAt]
+  );
+
+  res.cookie('access_token',  accessToken,  ACCESS_COOKIE_OPTIONS);
+  res.cookie('refresh_token', refreshToken, REFRESH_COOKIE_OPTIONS);
 };
 
 // ── GET /auth/google/callback ──────────────────────────────────────────────
-// Passport's GoogleStrategy has already verified the OAuth code and
-// upserted the user by the time this controller runs.
-// req.user is set by Passport's verify callback in config/passport.js.
-//
-// We issue JWT cookies here and redirect the user to the frontend.
+// Passport has already verified the OAuth code and upserted the user.
+// Instead of issuing JWTs immediately, we send an OTP to the user's email.
 const googleCallback = async (req, res, next) => {
   try {
-    const user = req.user; // set by Passport
+    const user = req.user;
 
     if (!user) {
       return res.redirect(`${process.env.CLIENT_URL}/login?error=oauth_failed`);
     }
 
-    // Issue tokens
-    const accessToken  = signAccessToken ({ id: user.id, username: user.username });
-    const refreshToken = signRefreshToken({ id: user.id });
+    // Generate a 6-digit OTP and a pending session token
+    const otp          = generateOtp();
+    const isNewUser    = !user.profile_completed;
+    const pendingToken = await storeOtp({
+      userId:      user.id,
+      email:       user.email,
+      displayName: user.displayName || 'there',
+      otp,
+      isNewUser,
+    });
 
-    // Persist the refresh token in the DB so we can revoke it on logout
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    await pool.query(
-      `INSERT INTO refresh_tokens (user_id, token_hash, expires_at)
-       VALUES ($1, $2, $3)`,
-      [user.id, refreshToken, expiresAt] // storing raw token; hash if you want extra security
+    // Email the OTP — non-blocking error handling so the redirect still works
+    try {
+      await sendOtpEmail(user.email, otp, user.displayName || 'there');
+    } catch (mailErr) {
+      console.error('❌  Failed to send OTP email:', mailErr.message);
+      // In development you can still proceed by reading the OTP from server logs
+      console.log(`[DEV] OTP for ${user.email}: ${otp}`);
+    }
+
+    // Redirect browser to the OTP verification page
+    return res.redirect(`${process.env.CLIENT_URL}/verify-otp?token=${pendingToken}`);
+
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ── POST /auth/verify-otp ─────────────────────────────────────────────────
+// Called from the OtpVerifyPage with { token, otp } in the request body.
+const verifyOtpHandler = async (req, res, next) => {
+  try {
+    const { token, otp } = req.body;
+
+    if (!token || !otp) {
+      return res.status(400).json({ success: false, message: 'Token and OTP are required.' });
+    }
+
+    const result = await verifyOtp(token, otp);
+
+    if (!result.success) {
+      return res.status(400).json({
+        success:      false,
+        message:      result.error,
+        attemptsLeft: result.attemptsLeft,
+      });
+    }
+
+    const { userId, isNewUser } = result.data;
+
+    // Fetch the latest user row from DB
+    const userResult = await pool.query(
+      'SELECT id, username, email, avatar_url, profile_completed FROM users WHERE id = $1',
+      [userId]
     );
 
-    // Set both tokens as httpOnly cookies
-    res.cookie('access_token',  accessToken,  ACCESS_COOKIE_OPTIONS);
-    res.cookie('refresh_token', refreshToken, REFRESH_COOKIE_OPTIONS);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
 
-    // Redirect to the frontend home page — the cookies travel with this redirect
-    return res.redirect(`${process.env.CLIENT_URL}/user-home`);
+    const user = userResult.rows[0];
+
+    if (isNewUser) {
+      // New user — issue a short-lived setup_token cookie and send them to /setup-profile
+      const setupToken = await storeSetupToken(userId);
+      res.cookie('setup_token', setupToken, SETUP_COOKIE_OPTIONS);
+      return res.status(200).json({ success: true, redirect: '/setup-profile' });
+    }
+
+    // Returning user — issue full JWT cookies
+    await issueAuthCookies(res, user);
+    return res.status(200).json({ success: true, redirect: '/profile' });
+
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ── POST /auth/resend-otp ─────────────────────────────────────────────────
+// Generates a fresh OTP for an existing pending session identified by token.
+const resendOtp = async (req, res, next) => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ success: false, message: 'Token is required.' });
+    }
+
+    // Check if the pending session still exists
+    const raw = await redis.get(`otp:${token}`);
+    if (!raw) {
+      return res.status(400).json({
+        success: false,
+        message: 'Session expired. Please log in again.',
+      });
+    }
+
+    const stored = JSON.parse(raw);
+
+    // Generate a fresh OTP and replace the existing entry
+    const newOtp = generateOtp();
+    await redis.setEx(
+      `otp:${token}`,
+      10 * 60,
+      JSON.stringify({ ...stored, otp: newOtp, attempts: 0 })
+    );
+
+    // Send the new OTP
+    try {
+      await sendOtpEmail(stored.email, newOtp, stored.displayName || 'there');
+    } catch (mailErr) {
+      console.error('❌  Failed to resend OTP email:', mailErr.message);
+      console.log(`[DEV] Resent OTP for ${stored.email}: ${newOtp}`);
+    }
+
+    return res.status(200).json({ success: true, message: 'OTP resent successfully.' });
+
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ── POST /auth/complete-profile ───────────────────────────────────────────
+// Called from SetupProfilePage after a new user fills in username + tagline.
+// Protected by setup_token cookie (not the normal JWT).
+const completeProfile = async (req, res, next) => {
+  try {
+    const setupToken = req.cookies?.setup_token;
+    if (!setupToken) {
+      return res.status(401).json({ success: false, message: 'Setup session expired. Please log in again.' });
+    }
+
+    const userId = await verifySetupToken(setupToken);
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'Setup session expired. Please log in again.' });
+    }
+
+    const { username, tagline } = req.body;
+
+    // Validate username
+    if (!username || username.trim().length < 3) {
+      return res.status(400).json({ success: false, message: 'Username must be at least 3 characters.' });
+    }
+    if (!/^[a-zA-Z0-9_]+$/.test(username.trim())) {
+      return res.status(400).json({ success: false, message: 'Username can only contain letters, numbers, and underscores.' });
+    }
+
+    // Check for username conflicts
+    const conflict = await pool.query(
+      'SELECT id FROM users WHERE username = $1 AND id != $2',
+      [username.trim(), userId]
+    );
+    if (conflict.rows.length > 0) {
+      return res.status(409).json({ success: false, message: 'This username is already taken. Please choose another.' });
+    }
+
+    // Update the user record
+    const result = await pool.query(
+      `UPDATE users
+         SET username = $1, tagline = $2, profile_completed = TRUE
+       WHERE id = $3
+       RETURNING id, username, email, avatar_url, tagline`,
+      [username.trim(), (tagline || '').trim().slice(0, 100), userId]
+    );
+
+    const user = result.rows[0];
+
+    // Clear the setup_token cookie
+    res.clearCookie('setup_token', { ...COOKIE_BASE, maxAge: 0 });
+
+    // Issue full JWT auth cookies
+    await issueAuthCookies(res, user);
+
+    return res.status(200).json({ success: true, redirect: '/profile' });
 
   } catch (error) {
     next(error);
@@ -76,13 +270,10 @@ const googleCallback = async (req, res, next) => {
 };
 
 // ── GET /auth/me ───────────────────────────────────────────────────────────
-// Returns the currently authenticated user's identity.
-// The frontend calls this once on load to check if the user is logged in.
-// authenticate middleware has already verified the access_token cookie.
 const getAuthUser = async (req, res, next) => {
   try {
     const result = await pool.query(
-      'SELECT id, username, email, avatar_url, created_at FROM users WHERE id = $1',
+      'SELECT id, username, email, avatar_url, tagline, profile_completed, created_at FROM users WHERE id = $1',
       [req.user.id]
     );
 
@@ -95,11 +286,13 @@ const getAuthUser = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       user: {
-        id:        user.id,
-        username:  user.username,
-        email:     user.email,
-        avatarUrl: user.avatar_url,
-        createdAt: user.created_at,
+        id:               user.id,
+        username:         user.username,
+        email:            user.email,
+        avatarUrl:        user.avatar_url,
+        tagline:          user.tagline,
+        profileCompleted: user.profile_completed,
+        createdAt:        user.created_at,
       },
     });
 
@@ -109,8 +302,6 @@ const getAuthUser = async (req, res, next) => {
 };
 
 // ── POST /auth/refresh ─────────────────────────────────────────────────────
-// Issues a new access_token cookie when the old one expires.
-// Reads the refresh_token from the httpOnly cookie (not the request body).
 const refresh = async (req, res, next) => {
   try {
     const refreshToken = req.cookies?.refresh_token;
@@ -122,7 +313,6 @@ const refresh = async (req, res, next) => {
       });
     }
 
-    // 1. Verify the token signature and expiry
     let decoded;
     try {
       decoded = verifyRefreshToken(refreshToken);
@@ -133,13 +323,9 @@ const refresh = async (req, res, next) => {
       });
     }
 
-    // 2. Check it hasn't been revoked in the DB
     const stored = await pool.query(
       `SELECT id FROM refresh_tokens
-       WHERE user_id = $1
-         AND token_hash = $2
-         AND revoked = FALSE
-         AND expires_at > NOW()
+       WHERE user_id = $1 AND token_hash = $2 AND revoked = FALSE AND expires_at > NOW()
        LIMIT 1`,
       [decoded.id, refreshToken]
     );
@@ -151,7 +337,6 @@ const refresh = async (req, res, next) => {
       });
     }
 
-    // 3. Fetch fresh user data
     const userResult = await pool.query(
       'SELECT id, username FROM users WHERE id = $1',
       [decoded.id]
@@ -162,8 +347,6 @@ const refresh = async (req, res, next) => {
     }
 
     const user = userResult.rows[0];
-
-    // 4. Issue a new access token cookie (refresh token stays the same)
     const newAccessToken = signAccessToken({ id: user.id, username: user.username });
     res.cookie('access_token', newAccessToken, ACCESS_COOKIE_OPTIONS);
 
@@ -175,34 +358,27 @@ const refresh = async (req, res, next) => {
 };
 
 // ── POST /auth/logout ──────────────────────────────────────────────────────
-// Clears the JWT cookies and revokes the refresh token in the DB.
 const logout = async (req, res, next) => {
   try {
     const refreshToken = req.cookies?.refresh_token;
 
     if (refreshToken) {
-      // Decode without throwing — token may already be expired
       try {
         const decoded = verifyRefreshToken(refreshToken);
-
-        // Revoke all active refresh tokens for this user
         await pool.query(
-          `UPDATE refresh_tokens SET revoked = TRUE
-           WHERE user_id = $1 AND revoked = FALSE`,
+          `UPDATE refresh_tokens SET revoked = TRUE WHERE user_id = $1 AND revoked = FALSE`,
           [decoded.id]
         );
       } catch {
-        // Token already invalid — still clear the cookies below
+        // Token already invalid — still clear the cookies
       }
 
-      // Blocklist the access token in Redis until it naturally expires
       const accessToken = req.cookies?.access_token;
       if (accessToken) {
         await redis.setEx(`blocklist:${accessToken}`, 15 * 60, '1');
       }
     }
 
-    // Clear both cookies from the browser
     res.clearCookie('access_token',  { ...COOKIE_BASE, maxAge: 0 });
     res.clearCookie('refresh_token', { ...COOKIE_BASE, maxAge: 0 });
 
@@ -213,4 +389,4 @@ const logout = async (req, res, next) => {
   }
 };
 
-module.exports = { googleCallback, getAuthUser, refresh, logout };
+module.exports = { googleCallback, verifyOtpHandler, resendOtp, completeProfile, getAuthUser, refresh, logout };
