@@ -1,18 +1,41 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
+import { useAuth } from '../context/AuthContext';
 import api from '../api';
 import '../styles/FindChatRoomPage.css';
 
 function FindChatRoomPage() {
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { currentUser, logout } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchName, setSearchName] = useState('');
   const [searchId, setSearchId] = useState('');
   
   const [filteredRooms, setFilteredRooms] = useState([]);
   const [loading, setLoading] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
+
+  const username = currentUser?.username || 'User';
+
+  // Auto-open sidebar on desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 768) {
+        setSidebarOpen(true);
+      } else {
+        setSidebarOpen(false);
+      }
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
+  };
 
   // Fetch all public rooms initially
   useEffect(() => {
@@ -74,16 +97,28 @@ function FindChatRoomPage() {
     <div className="user-home-page">
       <div className="page-content">
         <nav className="user-navbar">
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="navbar-sidebar-toggle">☰</button>
           <div className="user-navbar-content">
-            <h1 className="user-logo">CONNECTIFY</h1>
+            <div className="navbar-left">
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="navbar-sidebar-toggle"
+                aria-label="Toggle sidebar"
+              >
+                ☰
+              </button>
+              <h1 className="user-logo">CONNECTIFY</h1>
+            </div>
             <div className="user-nav-right">
-              <button onClick={() => navigate('/')} className="logout-btn">Logout</button>
+              <span className="user-greeting">Hey, {username}!</span>
+              <button onClick={handleLogout} className="logout-btn">Logout</button>
             </div>
           </div>
         </nav>
         <div className={`content-wrapper ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
-          <Sidebar />
+          <Sidebar
+            isOpen={sidebarOpen}
+            onClose={() => setSidebarOpen(false)}
+          />
           <main className="user-main">
             <div className="find-room-container">
               <div className="find-room-header">

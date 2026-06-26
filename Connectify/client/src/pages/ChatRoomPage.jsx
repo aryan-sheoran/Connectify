@@ -107,6 +107,11 @@ function ChatRoomPage() {
     setMessageInput('');
   };
 
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
+  };
+
   const handleLeaveRoom = async () => {
     try {
       await api.delete(`/rooms/${roomId}/leave`);
@@ -150,7 +155,7 @@ function ChatRoomPage() {
               >
                 ℹ️
               </button>
-              <button onClick={logout} className="logout-btn">Logout</button>
+              <button onClick={handleLogout} className="logout-btn">Logout</button>
             </div>
           </div>
         </nav>

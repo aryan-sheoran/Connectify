@@ -8,7 +8,21 @@ import '../styles/ProfilePage.css';
 function ProfilePage() {
   const navigate = useNavigate();
   const { currentUser, logout, checkAuth } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Auto-open sidebar on desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 768) {
+        setSidebarOpen(true);
+      } else {
+        setSidebarOpen(false);
+      }
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   const [ownedChatRooms, setOwnedChatRooms] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -104,16 +118,28 @@ function ProfilePage() {
     <div className="profile-page">
       <div className="page-content">
         <nav className="user-navbar">
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="navbar-sidebar-toggle">☰</button>
           <div className="user-navbar-content">
-            <h1 className="user-logo">CONNECTIFY</h1>
+            <div className="navbar-left">
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="navbar-sidebar-toggle"
+                aria-label="Toggle sidebar"
+              >
+                ☰
+              </button>
+              <h1 className="user-logo">CONNECTIFY</h1>
+            </div>
             <div className="user-nav-right">
+              <span className="user-greeting">Hey, {username}!</span>
               <button onClick={handleLogout} className="logout-btn">Logout</button>
             </div>
           </div>
         </nav>
         <div className={`content-wrapper ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
-          <Sidebar />
+          <Sidebar
+            isOpen={sidebarOpen}
+            onClose={() => setSidebarOpen(false)}
+          />
           <main className="user-main">
             {/* Profile Header Section */}
             <div className="profile-header">
