@@ -49,6 +49,7 @@ const searchRooms = async (req, res, next) => {
          r.image_url,
          r.type,
          r.max_members,
+         r.created_by,
          (SELECT COUNT(*) FROM room_members rm WHERE rm.room_id = r.id) AS member_count
        FROM rooms r
        WHERE ${whereClause}
@@ -66,6 +67,7 @@ const searchRooms = async (req, res, next) => {
       type:        r.type,
       members:     parseInt(r.member_count),
       maxMembers:  r.max_members,
+      createdBy:   r.created_by,
     }));
 
     return res.status(200).json({

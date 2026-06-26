@@ -132,9 +132,11 @@ const getMyRooms = async (req, res, next) => {
          r.id,
          r.name,
          r.slogan,
+         r.description,
          r.image_url,
          r.type,
          r.max_members,
+         r.created_by,
          (SELECT COUNT(*) FROM room_members rm WHERE rm.room_id = r.id) AS member_count
        FROM rooms r
        INNER JOIN room_members rm ON r.id = rm.room_id
@@ -147,10 +149,12 @@ const getMyRooms = async (req, res, next) => {
       id:           r.id,
       name:         r.name,
       slogan:       r.slogan,
+      description:  r.description,
       imageUrl:     r.image_url,
       type:         r.type,
       members:      parseInt(r.member_count),
       maxMembers:   r.max_members,
+      createdBy:    r.created_by,
     }));
 
     return res.status(200).json({

@@ -256,10 +256,6 @@ function ProfilePage() {
                 <span className="stat-number">{ownedChatRooms.reduce((sum, room) => sum + (room.members || 0), 0)}</span>
                 <span className="stat-label">Total Members in Your Rooms</span>
               </div>
-              <div className="stat-card">
-                <span className="stat-number">Level 5</span>
-                <span className="stat-label">User Status</span>
-              </div>
             </section>
           </main>
         </div>

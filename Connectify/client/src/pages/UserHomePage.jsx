@@ -103,7 +103,9 @@ function UserHomePage() {
                   </div>
                   {joinedRooms.length > 0 ? (
                     <div className="chat-rooms-grid">
-                      {joinedRooms.map(room => (
+                      {joinedRooms.map(room => {
+                        const isOwner = room.createdBy === currentUser?.id;
+                        return (
                         <div key={room.id} className="room-card-item">
                           <div className="room-image-wrapper">
                             {room.imageUrl ? (
@@ -111,7 +113,7 @@ function UserHomePage() {
                             ) : (
                               <div style={{width: '100%', height: '100%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem', color: 'white'}}>{room.name.charAt(0).toUpperCase()}</div>
                             )}
-                            <span className="room-badge public">JOINED</span>
+                            <span className="room-badge public">{isOwner ? 'OWNED' : 'JOINED'}</span>
                           </div>
                           <div className="room-info">
                             <h3 className="room-name">{room.name}</h3>
@@ -124,7 +126,8 @@ function UserHomePage() {
                             </div>
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <p style={{ color: '#a0a0a0', padding: '1rem 0' }}>You haven't joined any rooms yet. Browse public rooms below!</p>
@@ -136,7 +139,10 @@ function UserHomePage() {
                     <h3>World Wide Chat Rooms</h3>
                   </div>
                   <div className="chat-rooms-grid">
-                    {publicRooms.map(room => (
+                    {publicRooms.map(room => {
+                      const isOwner = room.createdBy === currentUser?.id || joinedRooms.some(r => r.id === room.id && r.createdBy === currentUser?.id);
+                      const isMember = joinedRooms.some(r => r.id === room.id);
+                      return (
                       <div key={room.id} className="room-card-item">
                         <div className="room-image-wrapper">
                           {room.imageUrl ? (
@@ -144,7 +150,9 @@ function UserHomePage() {
                           ) : (
                             <div style={{width: '100%', height: '100%', background: 'linear-gradient(135deg, #764ba2 0%, #667eea 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem', color: 'white'}}>{room.name.charAt(0).toUpperCase()}</div>
                           )}
-                          <span className="room-badge public">PUBLIC</span>
+                          <span className="room-badge public">
+                            {isOwner ? 'OWNED' : isMember ? 'JOINED' : 'PUBLIC'}
+                          </span>
                         </div>
                         <div className="room-info">
                           <h3 className="room-name">{room.name}</h3>
@@ -153,11 +161,14 @@ function UserHomePage() {
                           <p className="room-description">{room.description}</p>
                           <div className="room-footer">
                             <span className="members-info">👥 {room.members || 0} members</span>
-                            <button className="join-btn" onClick={() => navigate(`/chat-room/${room.id}`)}>Join Room</button>
+                            <button className="join-btn" onClick={() => navigate(`/chat-room/${room.id}`)}>
+                              {isOwner || isMember ? 'Enter' : 'Join Room'}
+                            </button>
                           </div>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </section>
               </>

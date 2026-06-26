@@ -13,6 +13,7 @@ function FindChatRoomPage() {
   const [searchId, setSearchId] = useState('');
   
   const [filteredRooms, setFilteredRooms] = useState([]);
+  const [joinedRooms, setJoinedRooms] = useState([]);
   const [loading, setLoading] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
 
@@ -37,14 +38,20 @@ function FindChatRoomPage() {
     navigate('/');
   };
 
-  // Fetch all public rooms initially
+  // Fetch all public rooms and user's joined rooms initially
   useEffect(() => {
     const fetchAllRooms = async () => {
       setLoading(true);
       try {
-        const res = await api.get('/rooms');
-        if (res.data.success) {
-          setFilteredRooms(res.data.rooms);
+        const [roomsRes, joinedRes] = await Promise.all([
+          api.get('/rooms'),
+          api.get('/users/me/rooms'),
+        ]);
+        if (roomsRes.data.success) {
+          setFilteredRooms(roomsRes.data.rooms);
+        }
+        if (joinedRes.data.success) {
+          setJoinedRooms(joinedRes.data.rooms);
         }
       } catch (error) {
         console.error('Failed to load initial rooms:', error);
@@ -180,7 +187,10 @@ function FindChatRoomPage() {
                 {loading && initialLoad ? (
                    <div style={{ textAlign: 'center', padding: '2rem', width: '100%' }}>Loading rooms...</div>
                 ) : filteredRooms.length > 0 ? (
-                  filteredRooms.map(room => (
+                  filteredRooms.map(room => {
+                    const isOwner = room.createdBy === currentUser?.id;
+                    const isMember = joinedRooms.some(r => r.id === room.id);
+                    return (
                     <div key={room.id} className="room-card-item">
                       <div className="room-image-wrapper">
                         {room.imageUrl ? (
@@ -188,7 +198,9 @@ function FindChatRoomPage() {
                         ) : (
                           <div style={{width: '100%', height: '100%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem', color: 'white'}}>{room.name.charAt(0).toUpperCase()}</div>
                         )}
-                        <span className={`room-badge ${room.type || 'public'}`}>{(room.type || 'public').toUpperCase()}</span>
+                        <span className={`room-badge ${room.type || 'public'}`}>
+                          {isOwner ? 'OWNED' : isMember ? 'JOINED' : (room.type || 'public').toUpperCase()}
+                        </span>
                       </div>
                       <div className="room-info">
                         <h3 className="room-name">{room.name}</h3>
@@ -203,12 +215,13 @@ function FindChatRoomPage() {
                             className="join-btn"
                             onClick={() => handleJoinRoom(room.id)}
                           >
-                            Join Room
+                            {isOwner || isMember ? 'Enter' : 'Join Room'}
                           </button>
                         </div>
                       </div>
                     </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className="no-results" style={{ width: '100%', gridColumn: '1 / -1' }}>
                     <div className="no-results-icon">🔍</div>
