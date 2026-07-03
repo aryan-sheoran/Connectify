@@ -42,6 +42,10 @@
 
 /* Welcome Section */
 .welcome-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   padding: 4rem 2rem;
   margin-bottom: 0;
@@ -55,6 +59,21 @@
   margin: 0 0 1rem 0;
   font-weight: 700;
   letter-spacing: 1px;
+  text-align: center;
+  width: 100%;
+}
+
+.welcome-title-wrapper {
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+}
+
+.welcome-emoji {
+  position: absolute;
+  left: 100%;
+  margin-left: 12px;
+  white-space: nowrap;
 }
 
 .username-highlight {
@@ -66,6 +85,8 @@
   font-size: 1.2rem;
   color: #a0a0a0;
   margin: 0;
+  text-align: center;
+  width: 100%;
 }
 
 @keyframes slideInDown {
@@ -96,19 +117,35 @@
 
 .section-header {
   margin-bottom: 2.5rem;
-  max-width: 1200px;
+  max-width: 1400px;
   margin-left: auto;
   margin-right: auto;
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
 }
 
 .section-header h3 {
-  font-size: 2rem;
-  color: #b0b0b0;
+  font-size: 1.9rem;
+  color: #e8e8e8;
   margin: 0;
-  padding-bottom: 1.5rem;
-  border-bottom: 3px solid #404040;
   font-weight: 700;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
 }
+
+.section-header .section-count {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #9aa5e8;
+  background: rgba(102, 126, 234, 0.12);
+  border: 1px solid rgba(102, 126, 234, 0.3);
+  padding: 0.15rem 0.55rem;
+  border-radius: 20px;
+  line-height: 1.4;
+}
+
+
 
 /* Chat Rooms Grid - Common Design */
 .chat-rooms-grid,
@@ -493,6 +530,11 @@
 
   .section-header h3 {
     font-size: 1.1rem;
+    white-space: normal;
+  }
+
+  .section-header {
+    gap: 0.75rem;
   }
 
 

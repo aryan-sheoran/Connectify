@@ -88,7 +88,10 @@ function UserHomePage() {
           <main className="user-main">
             <div className="welcome-section">
               <h2 className="welcome-title">
-                Welcome, <span className="username-highlight">{username}</span> 👋
+                <span className="welcome-title-wrapper">
+                  Welcome, <span className="username-highlight">{username}</span>
+                  <span className="welcome-emoji">👋</span>
+                </span>
               </h2>
               <p className="welcome-subtitle">Connect, Chat, and Share Anonymously</p>
             </div>
@@ -100,6 +103,9 @@ function UserHomePage() {
                 <section className="chat-rooms-section">
                   <div className="section-header">
                     <h3>Joined Chat Rooms</h3>
+                    {joinedRooms.length > 0 && (
+                      <span className="section-count">{joinedRooms.length}</span>
+                    )}
                   </div>
                   {joinedRooms.length > 0 ? (
                     <div className="chat-rooms-grid">
@@ -130,13 +136,16 @@ function UserHomePage() {
                       })}
                     </div>
                   ) : (
-                    <p style={{ color: '#a0a0a0', padding: '1rem 0' }}>You haven't joined any rooms yet. Browse public rooms below!</p>
+                    <p style={{ color: '#a0a0a0', padding: '1rem 0', textAlign: 'center' }}>You haven't joined any rooms yet. Browse public rooms below!</p>
                   )}
                 </section>
 
                 <section className="worldwide-rooms-section">
                   <div className="section-header">
                     <h3>World Wide Chat Rooms</h3>
+                    {publicRooms.length > 0 && (
+                      <span className="section-count">{publicRooms.length}</span>
+                    )}
                   </div>
                   <div className="chat-rooms-grid">
                     {publicRooms.map(room => {

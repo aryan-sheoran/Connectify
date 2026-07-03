@@ -217,7 +217,10 @@ function ChatRoomPage() {
 
                 <div className="room-actions">
                   {isOwner ? (
-                    <button className="action-btn secondary-btn" style={{ backgroundColor: '#e53e3e', color: 'white', borderColor: '#e53e3e' }} onClick={handleDeleteRoom}>Delete Room</button>
+                    <>
+                      <button className="action-btn primary-btn" onClick={() => navigate(`/manage-room/${roomId}`)}>Manage Room</button>
+                      <button className="action-btn secondary-btn" style={{ backgroundColor: '#e53e3e', color: 'white', borderColor: '#e53e3e' }} onClick={handleDeleteRoom}>Delete Room</button>
+                    </>
                   ) : (
                     <button className="action-btn secondary-btn" onClick={handleLeaveRoom}>Leave Room</button>
                   )}
