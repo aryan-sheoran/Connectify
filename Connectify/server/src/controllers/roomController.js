@@ -361,6 +361,147 @@ const deleteRoom = async (req, res, next) => {
   }
 };
 
+const updateRoom = async (req, res, next) => {
+  try {
+    const { roomId } = req.params;
+    const { name, slogan, description } = req.body;
+    const userId = req.user.id;
+
+    // Check ownership
+    const ownerCheck = await pool.query(
+      'SELECT created_by FROM rooms WHERE id = $1',
+      [roomId.toUpperCase()]
+    );
+
+    if (ownerCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, message: `Room ${roomId} not found.` });
+    }
+
+    if (ownerCheck.rows[0].created_by !== userId) {
+      return res.status(403).json({ success: false, message: 'Only the room creator can update settings.' });
+    }
+
+    const updates = [];
+    const values = [];
+    let idx = 1;
+
+    if (name) {
+      updates.push(`name = $${idx++}`);
+      values.push(name.trim());
+    }
+    if (slogan !== undefined) {
+      updates.push(`slogan = $${idx++}`);
+      values.push(slogan ? slogan.trim() : null);
+    }
+    if (description) {
+      updates.push(`description = $${idx++}`);
+      values.push(description.trim());
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ success: false, message: 'Nothing to update.' });
+    }
+
+    values.push(roomId.toUpperCase());
+    const result = await pool.query(
+      `UPDATE rooms SET ${updates.join(', ')} WHERE id = $${idx} RETURNING *`,
+      values
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'Room updated successfully',
+      room: result.rows[0],
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const removeMember = async (req, res, next) => {
+  try {
+    const { roomId, userId } = req.params;
+    const currentUserId = req.user.id;
+    const roomKey = roomId.toUpperCase();
+
+    // Check ownership
+    const ownerCheck = await pool.query(
+      'SELECT created_by FROM rooms WHERE id = $1',
+      [roomKey]
+    );
+
+    if (ownerCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, message: `Room ${roomId} not found.` });
+    }
+
+    if (ownerCheck.rows[0].created_by !== currentUserId) {
+      return res.status(403).json({ success: false, message: 'Only the room creator can remove members.' });
+    }
+
+    if (userId === currentUserId) {
+      return res.status(400).json({ success: false, message: 'You cannot kick yourself. Leave the room instead.' });
+    }
+
+    const result = await pool.query(
+      'DELETE FROM room_members WHERE room_id = $1 AND user_id = $2 RETURNING *',
+      [roomKey, userId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ success: false, message: 'User is not a member of this room.' });
+    }
+
+    // Invalidate Redis membership cache
+    const redis = require('../config/redis');
+    await redis.sRem(`room:${roomKey}:members`, userId).catch(() => {});
+
+    return res.status(200).json({
+      success: true,
+      message: 'Member removed successfully.',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getRoomMembers = async (req, res, next) => {
+  try {
+    const { roomId } = req.params;
+    const roomKey = roomId.toUpperCase();
+
+    // First check if the room exists
+    const roomCheck = await pool.query('SELECT 1 FROM rooms WHERE id = $1', [roomKey]);
+    if (roomCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, message: `Room ${roomId} not found.` });
+    }
+
+    // Get all members joined in the room
+    const result = await pool.query(
+      `SELECT u.id, u.username, u.avatar_url, u.tagline, rm.joined_at
+       FROM room_members rm
+       INNER JOIN users u ON rm.user_id = u.id
+       WHERE rm.room_id = $1
+       ORDER BY rm.joined_at ASC`,
+      [roomKey]
+    );
+
+    const members = result.rows.map(r => ({
+      id: r.id,
+      username: r.username,
+      avatarUrl: r.avatar_url,
+      tagline: r.tagline,
+      joinedAt: r.joined_at,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      members,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllRooms,
   createRoom,
@@ -368,4 +509,7 @@ module.exports = {
   joinRoom,
   leaveRoom,
   deleteRoom,
+  updateRoom,
+  removeMember,
+  getRoomMembers,
 };

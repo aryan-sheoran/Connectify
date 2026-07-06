@@ -25,3 +25,6 @@ dist-ssr
 
 .env    
 .env.example
+
+
+AWS_DEPLOYS_AND_COMPLETION_GUIDE.md

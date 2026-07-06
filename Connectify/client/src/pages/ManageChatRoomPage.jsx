@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
+import api from '../api';
 import '../styles/ManageChatRoomPage.css';
 
 function ManageChatRoomPage() {
@@ -11,6 +12,16 @@ function ManageChatRoomPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [saveStatus, setSaveStatus] = useState('');
   const [removingMember, setRemovingMember] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const [roomData, setRoomData] = useState(null);
+  const [members, setMembers] = useState([]);
+  const [formData, setFormData] = useState({
+    name: '',
+    slogan: '',
+    description: '',
+  });
 
   const username = currentUser?.username || 'User';
 
@@ -28,61 +39,129 @@ function ManageChatRoomPage() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  useEffect(() => {
+    const fetchRoomAndMembers = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // 1. Fetch room details
+        const roomRes = await api.get(`/rooms/${roomId}`);
+        if (!roomRes.data.success) {
+          throw new Error('Failed to load room details');
+        }
+        
+        const room = roomRes.data.room;
+        setRoomData(room);
+        setFormData({
+          name: room.name || '',
+          slogan: room.slogan || '',
+          description: room.description || '',
+        });
+
+        // 2. Fetch members list
+        const membersRes = await api.get(`/rooms/${roomId}/members`);
+        if (membersRes.data.success) {
+          setMembers(membersRes.data.members);
+        }
+      } catch (err) {
+        console.error('Error fetching manage page data:', err);
+        setError(err.response?.data?.message || err.message || 'Failed to load data.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (currentUser && roomId) {
+      fetchRoomAndMembers();
+    }
+  }, [roomId, currentUser]);
+
   const handleLogout = async () => {
     await logout();
     navigate('/');
   };
 
-  // Mock room data — in production this would come from the backend
-  const [roomData, setRoomData] = useState({
-    id: roomId || '1',
-    name: 'Tech Enthusiasts',
-    title: 'Welcome to Tech Enthusiasts',
-    description: 'A community for tech enthusiasts to discuss latest technologies, programming, and digital innovation.',
-    slogan: 'Connect, Learn, and Innovate Together',
-    isPrivate: true,
-    owner: username,
-    memberCount: 145,
-    createdDate: '2024-01-15',
-  });
-
-  // Mock members list for private rooms
-  const [members, setMembers] = useState([
-    { id: 1, name: 'Alex', joinedDate: '2024-02-01', status: 'online' },
-    { id: 2, name: 'Jordan', joinedDate: '2024-02-05', status: 'online' },
-    { id: 3, name: 'Sam', joinedDate: '2024-03-10', status: 'offline' },
-    { id: 4, name: 'Morgan', joinedDate: '2024-03-15', status: 'online' },
-    { id: 5, name: 'Taylor', joinedDate: '2024-04-01', status: 'offline' },
-    { id: 6, name: 'Casey', joinedDate: '2024-04-20', status: 'online' },
-  ]);
-
-
-
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setRoomData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
     setSaveStatus('');
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
-    // In production, send updated roomData to backend
-    console.log('Saving room data:', roomData);
-    setSaveStatus('saved');
-    setTimeout(() => setSaveStatus(''), 3000);
+    setSaveStatus('');
+    try {
+      const response = await api.put(`/rooms/${roomId}`, {
+        name: formData.name,
+        slogan: formData.slogan,
+        description: formData.description,
+      });
+      if (response.data.success) {
+        setRoomData((prev) => ({
+          ...prev,
+          name: formData.name,
+          slogan: formData.slogan,
+          description: formData.description,
+        }));
+        setSaveStatus('saved');
+        setTimeout(() => setSaveStatus(''), 3000);
+      }
+    } catch (err) {
+      console.error('Failed to save room details:', err);
+      alert(err.response?.data?.message || 'Failed to save changes.');
+    }
   };
 
-  const handleRemoveMember = (memberId) => {
+  const handleRemoveMember = async (memberId) => {
+    if (!window.confirm('Are you sure you want to remove this member from the room?')) return;
     setRemovingMember(memberId);
-    // Animate out, then remove
-    setTimeout(() => {
-      setMembers((prev) => prev.filter((m) => m.id !== memberId));
+    try {
+      const response = await api.delete(`/rooms/${roomId}/members/${memberId}`);
+      if (response.data.success) {
+        // Animate out, then remove
+        setTimeout(() => {
+          setMembers((prev) => prev.filter((m) => m.id !== memberId));
+          setRemovingMember(null);
+        }, 400);
+      }
+    } catch (err) {
+      console.error('Failed to remove member:', err);
+      alert(err.response?.data?.message || 'Failed to remove member.');
       setRemovingMember(null);
-    }, 400);
+    }
   };
+
+  const handleDeleteRoom = async () => {
+    if (!window.confirm('Are you sure you want to permanently delete this room? This action cannot be undone.')) return;
+    try {
+      const response = await api.delete(`/rooms/${roomId}`);
+      if (response.data.success) {
+        navigate('/user-home');
+      }
+    } catch (err) {
+      console.error('Failed to delete room:', err);
+      alert(err.response?.data?.message || 'Failed to delete room.');
+    }
+  };
+
+  if (loading) {
+    return <div style={{ color: 'white', textAlign: 'center', marginTop: '20vh' }}>Loading...</div>;
+  }
+
+  if (error || !roomData) {
+    return (
+      <div style={{ color: 'red', textAlign: 'center', marginTop: '20vh' }}>
+        Error: {error || 'Room not found'} <br /><br />
+        <button onClick={() => navigate('/user-home')} className="back-home-btn">Go Home</button>
+      </div>
+    );
+  }
+
+  const isOwner = roomData.createdBy === currentUser?.id;
 
   // Only the owner can access this page
-  if (roomData.owner !== username) {
+  if (!isOwner) {
     return (
       <div className="user-home-page">
         <div className="page-content">
@@ -136,8 +215,8 @@ function ManageChatRoomPage() {
               <div className="manage-room-header">
                 <div className="manage-header-top">
                   <button className="manage-back-btn" onClick={() => navigate(`/chat-room/${roomId}`)}>← Back to Room</button>
-                  <span className={`room-type-badge ${roomData.isPrivate ? 'private' : 'public'}`}>
-                    {roomData.isPrivate ? '🔒 Private' : '🌐 Public'}
+                  <span className={`room-type-badge ${roomData.type === 'private' ? 'private' : 'public'}`}>
+                    {roomData.type === 'private' ? '🔒 Private' : '🌐 Public'}
                   </span>
                 </div>
                 <h2 className="manage-room-title">Manage Chat Room</h2>
@@ -159,20 +238,7 @@ function ManageChatRoomPage() {
                       id="manage-name"
                       name="name"
                       placeholder="Enter room name"
-                      value={roomData.name}
-                      onChange={handleChange}
-                      required
-                    />
-                  </div>
-
-                  <div className="manage-form-group">
-                    <label htmlFor="manage-title">Room Title</label>
-                    <input
-                      type="text"
-                      id="manage-title"
-                      name="title"
-                      placeholder="Enter a display title for the room"
-                      value={roomData.title}
+                      value={formData.name}
                       onChange={handleChange}
                       required
                     />
@@ -185,11 +251,11 @@ function ManageChatRoomPage() {
                       id="manage-slogan"
                       name="slogan"
                       placeholder="A catchy tagline for your room"
-                      value={roomData.slogan}
+                      value={formData.slogan}
                       onChange={handleChange}
                       maxLength="100"
                     />
-                    <span className="manage-char-count">{roomData.slogan.length}/100</span>
+                    <span className="manage-char-count">{formData.slogan.length}/100</span>
                   </div>
 
                   <div className="manage-form-group">
@@ -198,7 +264,7 @@ function ManageChatRoomPage() {
                       id="manage-description"
                       name="description"
                       placeholder="Describe the purpose of this chat room"
-                      value={roomData.description}
+                      value={formData.description}
                       onChange={handleChange}
                       rows="5"
                       required
@@ -218,16 +284,16 @@ function ManageChatRoomPage() {
                       <span className="info-value">{roomData.id}</span>
                     </div>
                     <div className="manage-info-card">
-                      <span className="info-label">Owner</span>
-                      <span className="info-value">{roomData.owner}</span>
+                      <span className="info-label">Creator Username</span>
+                      <span className="info-value">{roomData.creatorUsername || 'You'}</span>
                     </div>
                     <div className="manage-info-card">
                       <span className="info-label">Members</span>
-                      <span className="info-value">{roomData.isPrivate ? members.length : roomData.memberCount}</span>
+                      <span className="info-value">{members.length}</span>
                     </div>
                     <div className="manage-info-card">
                       <span className="info-label">Created</span>
-                      <span className="info-value">{new Date(roomData.createdDate).toLocaleDateString()}</span>
+                      <span className="info-value">{new Date(roomData.createdAt).toLocaleDateString()}</span>
                     </div>
                   </div>
                 </div>
@@ -243,49 +309,52 @@ function ManageChatRoomPage() {
                 </div>
               </form>
 
-              {/* Members Management — Private rooms only */}
-              {roomData.isPrivate && (
-                <div className="manage-section manage-members-section">
-                  <div className="manage-section-header">
-                    <span className="manage-section-icon">👥</span>
-                    <h3>Members ({members.length})</h3>
-                  </div>
-                  <p className="manage-members-hint">Remove members from your private chat room. This action cannot be undone.</p>
+              {/* Members Management */}
+              <div className="manage-section manage-members-section">
+                <div className="manage-section-header">
+                  <span className="manage-section-icon">👥</span>
+                  <h3>Members ({members.length})</h3>
+                </div>
+                <p className="manage-members-hint">Remove members from your chat room. This action cannot be undone.</p>
 
-                  <div className="manage-members-list">
-                    {members.map((member) => (
-                      <div
-                        key={member.id}
-                        className={`manage-member-row ${removingMember === member.id ? 'removing' : ''}`}
-                      >
-                        <div className="manage-member-left">
-                          <div className="manage-member-avatar">
-                            {member.name.charAt(0)}
-                            <span className={`manage-status-dot ${member.status}`}></span>
-                          </div>
-                          <div className="manage-member-info">
-                            <span className="manage-member-name">{member.name}</span>
-                            <span className="manage-member-joined">Joined {new Date(member.joinedDate).toLocaleDateString()}</span>
-                          </div>
+                <div className="manage-members-list">
+                  {members.map((member) => (
+                    <div
+                      key={member.id}
+                      className={`manage-member-row ${removingMember === member.id ? 'removing' : ''}`}
+                    >
+                      <div className="manage-member-left">
+                        <div className="manage-member-avatar">
+                          {member.avatarUrl ? (
+                            <img src={member.avatarUrl} alt={member.username} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                          ) : (
+                            member.username.charAt(0).toUpperCase()
+                          )}
                         </div>
+                        <div className="manage-member-info">
+                          <span className="manage-member-name">{member.username}</span>
+                          <span className="manage-member-joined">Joined {new Date(member.joinedAt).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                      {member.id !== currentUser?.id && (
                         <button
                           className="manage-remove-btn"
                           onClick={() => handleRemoveMember(member.id)}
-                          title={`Remove ${member.name}`}
+                          title={`Remove ${member.username}`}
                         >
                           Remove
                         </button>
-                      </div>
-                    ))}
+                      )}
+                    </div>
+                  ))}
 
-                    {members.length === 0 && (
-                      <div className="manage-no-members">
-                        <p>No members to display.</p>
-                      </div>
-                    )}
-                  </div>
+                  {members.length === 0 && (
+                    <div className="manage-no-members">
+                      <p>No members to display.</p>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
 
               {/* Danger Zone */}
               <div className="manage-section manage-danger-section">
@@ -299,7 +368,7 @@ function ManageChatRoomPage() {
                       <h4>Delete Chat Room</h4>
                       <p>Permanently delete this room and all its messages. This action cannot be undone.</p>
                     </div>
-                    <button className="manage-delete-btn" onClick={() => alert('Delete room — would trigger confirmation in production')}>
+                    <button className="manage-delete-btn" onClick={handleDeleteRoom}>
                       Delete Room
                     </button>
                   </div>

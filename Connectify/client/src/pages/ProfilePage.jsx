@@ -68,6 +68,16 @@ function ProfilePage() {
     navigate('/');
   };
 
+  const handleDeleteRoom = async (roomId) => {
+    if (!window.confirm('Delete this room permanently? All messages will be lost.')) return;
+    try {
+      await api.delete(`/rooms/${roomId}`);
+      setOwnedChatRooms(prev => prev.filter(r => r.id !== roomId));
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete room.');
+    }
+  };
+
   const handleStartEdit = () => {
     setNewUsername(username);
     setIsEditing(true);
@@ -226,7 +236,7 @@ function ProfilePage() {
                           <div style={{display: 'flex', gap: '0.5rem'}}>
                             <button className="enter-room-btn" onClick={() => navigate(`/chat-room/${room.id}`)}>Enter</button>
                             <button className="manage-btn" onClick={() => navigate(`/manage-room/${room.id}`)}>Manage</button>
-                            <button className="delete-btn">Delete</button>
+                            <button className="delete-btn" onClick={() => handleDeleteRoom(room.id)}>Delete</button>
                           </div>
                         </div>
                       </div>

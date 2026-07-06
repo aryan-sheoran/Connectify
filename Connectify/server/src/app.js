@@ -20,6 +20,9 @@ const { multerErrorHandler, errorHandler, notFoundHandler } = require('./middlew
 
 const app = express();
 
+// Trust proxy - required for express-rate-limit and cookies behind AWS ALB/CloudFront
+app.set('trust proxy', 1);
+
 // ── Core middleware ───────────────────────────────────────────────────────
 
 // CORS — allow only the frontend origin in production

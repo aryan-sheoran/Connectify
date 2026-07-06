@@ -12,11 +12,14 @@ const {
   joinRoom,
   leaveRoom,
   deleteRoom,
+  updateRoom,
+  removeMember,
+  getRoomMembers,
 } = require('../controllers/roomController');
 
 const { getRoomMessages, reactToMessage } = require('../controllers/messageController');
 const { authenticate }      = require('../middleware/authMiddleware');
-const { validateCreateRoom } = require('../middleware/validationMiddleware');
+const { validateCreateRoom, validateUpdateRoom } = require('../middleware/validationMiddleware');
 const { uploadRoomImage }   = require('../config/cloudinary');
 
 // ── Public routes ──────────────────────────────────────────────────────────
@@ -52,6 +55,18 @@ router.delete('/:roomId/leave', authenticate, leaveRoom);
 // DELETE /rooms/:roomId
 // Permanently deletes a room (creator only)
 router.delete('/:roomId', authenticate, deleteRoom);
+
+// PUT /rooms/:roomId
+// Updates a room's details (creator only)
+router.put('/:roomId', authenticate, validateUpdateRoom, updateRoom);
+
+// GET /rooms/:roomId/members
+// Fetches all members in a room
+router.get('/:roomId/members', authenticate, getRoomMembers);
+
+// DELETE /rooms/:roomId/members/:userId
+// Removes a member from the room (creator only)
+router.delete('/:roomId/members/:userId', authenticate, removeMember);
 
 // GET /rooms/:roomId/messages?before=<ISO_TIMESTAMP>&limit=50
 // Fetches paginated message history (user must be a room member)

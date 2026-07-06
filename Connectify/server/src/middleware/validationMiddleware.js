@@ -98,9 +98,32 @@ const validateUpdateProfile = [
   handleValidationErrors,
 ];
 
+const validateUpdateRoom = [
+  body('name')
+    .optional()
+    .trim()
+    .isLength({ min: 3, max: 100 })
+    .withMessage('Room name must be between 3 and 100 characters'),
+
+  body('description')
+    .optional()
+    .trim()
+    .isLength({ min: 10 })
+    .withMessage('Description must be at least 10 characters'),
+
+  body('slogan')
+    .optional()
+    .trim()
+    .isLength({ max: 100 })
+    .withMessage('Slogan cannot exceed 100 characters'),
+
+  handleValidationErrors,
+];
+
 module.exports = {
   validateCreateRoom,
   validateRoomSearch,
   validateUpdateProfile,
+  validateUpdateRoom,
   handleValidationErrors,
 };

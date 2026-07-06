@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from 'react-router-dom';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import Sidebar from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
@@ -19,8 +19,20 @@ function ChatRoomPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Pagination state
+  const [hasMore, setHasMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  // Typing indicator state
+  const [typingUsers, setTypingUsers] = useState({}); // { username: timeoutId }
+  const typingTimeoutsRef = useRef({});
+  const isTypingRef = useRef(false);
+  const typingDebounceRef = useRef(null);
+
   const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -58,7 +70,11 @@ function ChatRoomPage() {
         if (roomRes.data.success && isMounted) setRoomData(roomRes.data.room);
 
         const msgRes = await api.get(`/rooms/${roomId}/messages?limit=50`);
-        if (msgRes.data.success && isMounted) setMessages(msgRes.data.messages);
+        if (msgRes.data.success && isMounted) {
+          setMessages(msgRes.data.messages);
+          setHasMore(msgRes.data.hasMore);
+          setNextCursor(msgRes.data.nextCursor);
+        }
 
         const socket = io('/', { withCredentials: true, reconnection: true });
         socketRef.current = socket;
@@ -77,6 +93,39 @@ function ChatRoomPage() {
           if (isMounted) setMessages((prev) => prev.filter(msg => msg.id !== messageId));
         });
 
+        // ── Typing indicators ──
+        socket.on('typing', ({ username }) => {
+          if (!isMounted || !username) return;
+          setTypingUsers((prev) => ({ ...prev, [username]: true }));
+
+          // Clear any existing auto-remove timeout for this user
+          if (typingTimeoutsRef.current[username]) {
+            clearTimeout(typingTimeoutsRef.current[username]);
+          }
+          // Auto-remove after 3 seconds if no stop event arrives
+          typingTimeoutsRef.current[username] = setTimeout(() => {
+            setTypingUsers((prev) => {
+              const next = { ...prev };
+              delete next[username];
+              return next;
+            });
+            delete typingTimeoutsRef.current[username];
+          }, 3000);
+        });
+
+        socket.on('typing_stopped', ({ username }) => {
+          if (!isMounted || !username) return;
+          if (typingTimeoutsRef.current[username]) {
+            clearTimeout(typingTimeoutsRef.current[username]);
+            delete typingTimeoutsRef.current[username];
+          }
+          setTypingUsers((prev) => {
+            const next = { ...prev };
+            delete next[username];
+            return next;
+          });
+        });
+
         socket.on('connect_error', (err) => console.error('Socket connect error:', err.message));
 
       } catch (err) {
@@ -91,6 +140,8 @@ function ChatRoomPage() {
 
     return () => {
       isMounted = false;
+      // Clear all typing timeouts on unmount
+      Object.values(typingTimeoutsRef.current).forEach(clearTimeout);
       if (socketRef.current) {
         socketRef.current.emit('leave_room', { roomId });
         socketRef.current.disconnect();
@@ -98,9 +149,70 @@ function ChatRoomPage() {
     };
   }, [roomId, currentUser]);
 
+  // ── Load Earlier Messages ────────────────────────────────────────────────
+  const handleLoadMore = useCallback(async () => {
+    if (!hasMore || loadingMore || !nextCursor) return;
+    setLoadingMore(true);
+
+    // Capture scroll position before prepending
+    const container = messagesContainerRef.current;
+    const prevScrollHeight = container?.scrollHeight || 0;
+
+    try {
+      const res = await api.get(`/rooms/${roomId}/messages?limit=50&before=${encodeURIComponent(nextCursor)}`);
+      if (res.data.success) {
+        setMessages((prev) => [...res.data.messages, ...prev]);
+        setHasMore(res.data.hasMore);
+        setNextCursor(res.data.nextCursor);
+
+        // Restore scroll position so older messages appear above the current view
+        requestAnimationFrame(() => {
+          if (container) {
+            container.scrollTop = container.scrollHeight - prevScrollHeight;
+          }
+        });
+      }
+    } catch (err) {
+      console.error('Failed to load older messages:', err);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [hasMore, loadingMore, nextCursor, roomId]);
+
+  // ── Typing indicator emitters ────────────────────────────────────────────
+  const emitTypingStop = useCallback(() => {
+    if (isTypingRef.current && socketRef.current) {
+      socketRef.current.emit('typing_stop', { roomId });
+      isTypingRef.current = false;
+    }
+  }, [roomId]);
+
+  const handleInputChange = (e) => {
+    setMessageInput(e.target.value);
+
+    if (!socketRef.current) return;
+
+    // Emit typing_start only once until stop
+    if (!isTypingRef.current) {
+      socketRef.current.emit('typing_start', { roomId });
+      isTypingRef.current = true;
+    }
+
+    // Reset the debounce timer on each keystroke
+    clearTimeout(typingDebounceRef.current);
+    typingDebounceRef.current = setTimeout(() => {
+      emitTypingStop();
+    }, 1500);
+  };
+
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (messageInput.trim() === '' || !socketRef.current) return;
+
+    // Stop typing indicator immediately on send
+    clearTimeout(typingDebounceRef.current);
+    emitTypingStop();
+
     socketRef.current.emit('send_message', { roomId, content: messageInput }, (response) => {
       if (!response?.success) console.error('Failed to send message:', response?.message);
     });
@@ -130,6 +242,17 @@ function ChatRoomPage() {
       alert(err.response?.data?.message || 'Failed to delete room');
     }
   };
+
+  // Build the typing label string
+  const typingUsernames = Object.keys(typingUsers);
+  let typingLabel = '';
+  if (typingUsernames.length === 1) {
+    typingLabel = `${typingUsernames[0]} is typing…`;
+  } else if (typingUsernames.length === 2) {
+    typingLabel = `${typingUsernames[0]} and ${typingUsernames[1]} are typing…`;
+  } else if (typingUsernames.length > 2) {
+    typingLabel = `${typingUsernames.length} people are typing…`;
+  }
 
   if (loading) return <div style={{ color: 'white', textAlign: 'center', marginTop: '20vh' }}>Loading...</div>;
   if (error) return <div style={{ color: 'red', textAlign: 'center', marginTop: '20vh' }}>Error: {error} <br /><br /><button onClick={() => navigate('/user-home')} className="btn btn-primary">Go Home</button></div>;
@@ -238,7 +361,24 @@ function ChatRoomPage() {
                 <button className="chat-options-btn">⋯</button>
               </div>
 
-              <div className="messages-container">
+              <div className="messages-container" ref={messagesContainerRef}>
+                {/* Load Earlier Messages button */}
+                {hasMore && (
+                  <div className="load-more-wrapper">
+                    <button
+                      className="load-more-btn"
+                      onClick={handleLoadMore}
+                      disabled={loadingMore}
+                    >
+                      {loadingMore ? (
+                        <span className="load-more-spinner">⟳ Loading…</span>
+                      ) : (
+                        '↑ Load earlier messages'
+                      )}
+                    </button>
+                  </div>
+                )}
+
                 {messages.map((msg) => {
                   const isOwn = msg.senderId === currentUser?.id;
                   const timeString = msg.sentAt ? new Date(msg.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
@@ -264,14 +404,26 @@ function ChatRoomPage() {
                 <div ref={messagesEndRef} />
               </div>
 
+              {/* Typing Indicator */}
+              <div className={`typing-indicator-bar ${typingLabel ? 'typing-visible' : ''}`}>
+                {typingLabel && (
+                  <>
+                    <span className="typing-dots">
+                      <span /><span /><span />
+                    </span>
+                    <span className="typing-text">{typingLabel}</span>
+                  </>
+                )}
+              </div>
+
               <form className="message-input-form" onSubmit={handleSendMessage}>
                 <div className="input-wrapper">
                   <input
                     type="text"
                     className="message-input"
-                    placeholder="Type a message..."
+                    placeholder="Type a message…"
                     value={messageInput}
-                    onChange={(e) => setMessageInput(e.target.value)}
+                    onChange={handleInputChange}
                   />
                   <button type="submit" className="send-btn">📤</button>
                 </div>

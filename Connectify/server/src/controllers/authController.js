@@ -27,6 +27,7 @@
 //   refresh_token — httpOnly, Secure, SameSite=Lax, maxAge 7 days
 //   setup_token   — httpOnly, Secure, SameSite=Lax, maxAge 15 min (new users only)
 
+const crypto = require('crypto');
 const pool  = require('../config/db');
 const redis = require('../config/redis');
 const {
@@ -36,6 +37,11 @@ const {
 } = require('../utils/jwt');
 const { generateOtp, storeOtp, verifyOtp, storeSetupToken, verifySetupToken } = require('../utils/otp');
 const { sendOtpEmail } = require('../utils/mailer');
+
+// Helper to hash token with sha256
+const hashToken = (token) => {
+  return crypto.createHash('sha256').update(token).digest('hex');
+};
 
 // ── Cookie helpers ─────────────────────────────────────────────────────────
 
@@ -69,9 +75,10 @@ const issueAuthCookies = async (res, user) => {
   const refreshToken = signRefreshToken({ id: user.id });
 
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const tokenHash = hashToken(refreshToken);
   await pool.query(
     `INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)`,
-    [user.id, refreshToken, expiresAt]
+    [user.id, tokenHash, expiresAt]
   );
 
   res.cookie('access_token',  accessToken,  ACCESS_COOKIE_OPTIONS);
@@ -323,11 +330,12 @@ const refresh = async (req, res, next) => {
       });
     }
 
+    const tokenHash = hashToken(refreshToken);
     const stored = await pool.query(
       `SELECT id FROM refresh_tokens
        WHERE user_id = $1 AND token_hash = $2 AND revoked = FALSE AND expires_at > NOW()
        LIMIT 1`,
-      [decoded.id, refreshToken]
+      [decoded.id, tokenHash]
     );
 
     if (stored.rows.length === 0) {
@@ -365,9 +373,10 @@ const logout = async (req, res, next) => {
     if (refreshToken) {
       try {
         const decoded = verifyRefreshToken(refreshToken);
+        const tokenHash = hashToken(refreshToken);
         await pool.query(
-          `UPDATE refresh_tokens SET revoked = TRUE WHERE user_id = $1 AND revoked = FALSE`,
-          [decoded.id]
+          `UPDATE refresh_tokens SET revoked = TRUE WHERE user_id = $1 AND token_hash = $2 AND revoked = FALSE`,
+          [decoded.id, tokenHash]
         );
       } catch {
         // Token already invalid — still clear the cookies
