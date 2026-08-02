@@ -76,3 +76,5 @@ CREATE INDEX IF NOT EXISTS idx_rooms_type          ON rooms(type);
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user ON refresh_tokens(user_id);
 CREATE INDEX IF NOT EXISTS idx_users_google_id     ON users(google_id);
 CREATE INDEX IF NOT EXISTS idx_messages_room_time  ON messages(room_id, sent_at DESC);
+-- Standalone index used by the hourly DELETE cleanup (WHERE sent_at < NOW() - INTERVAL '24 hours')
+CREATE INDEX IF NOT EXISTS idx_messages_sent_at    ON messages(sent_at);

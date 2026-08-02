@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import api from '../api';
+import { useAuth } from '../context/AuthContext';
 import '../styles/OtpVerifyPage.css';
 
 const OTP_LENGTH = 6;
@@ -9,6 +10,7 @@ const RESEND_COOLDOWN = 60; // seconds before resend is allowed
 function OtpVerifyPage() {
   const [searchParams]         = useSearchParams();
   const navigate               = useNavigate();
+  const { checkAuth }          = useAuth();
   const pendingToken           = searchParams.get('token');
 
   // OTP boxes — one value per digit
@@ -127,7 +129,9 @@ function OtpVerifyPage() {
 
       if (response.data.success) {
         setSuccess('Verified! Redirecting…');
-        // Small delay so the user sees the success state
+        // Refresh AuthContext so ProtectedRoute knows the user is now logged in,
+        // then navigate after a short delay so the user sees the success state.
+        await checkAuth();
         setTimeout(() => {
           navigate(response.data.redirect, { replace: true });
         }, 600);

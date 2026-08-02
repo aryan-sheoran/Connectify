@@ -40,44 +40,6 @@ app.set('trust proxy', 1); // 1 indicates the server is 1 hop away from the prox
 
 ---
 
-## 2. What Else is Needed to Complete Connectify
-
-The following checklist is a consolidated list of critical, high, and medium-priority tasks required to make Connectify fully production-ready:
-
-### A. Critical Backend & Schema Tasks
-1. **Create the `messages` table in PostgreSQL**:
-   Since the app transitioned from MongoDB to PostgreSQL, you must run the following SQL schema update:
-   ```sql
-   CREATE TABLE IF NOT EXISTS messages (
-       id            UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
-       room_id       VARCHAR(20)  REFERENCES rooms(id) ON DELETE CASCADE,
-       sender_id     UUID         REFERENCES users(id) ON DELETE SET NULL,
-       sender_username VARCHAR(50),
-       sender_avatar   TEXT,
-       content       TEXT         NOT NULL,
-       sent_at       TIMESTAMPTZ  DEFAULT NOW()
-   );
-   CREATE INDEX IF NOT EXISTS idx_messages_room_sent ON messages(room_id, sent_at DESC);
-   ```
-2. **Hash Refresh Tokens before Storing**:
-   In `controllers/authController.js`, refresh tokens are currently stored as plain text. Hash them with SHA-256 before inserting them into `refresh_tokens.token_hash` to protect against database breach leaks.
-3. **Remove MongoDB Startup Gate**:
-   Clean up `server.js` and delete `mongodb.js` config since messages and rooms are now consolidated in PostgreSQL.
-
-### B. Incomplete Features to Implement
-1. **Complete `ManageChatRoomPage.jsx`**:
-   The current page uses mock data and `localStorage`. It needs to be rewritten to make actual API calls:
-   - `GET /api/v1/rooms/:roomId` to load current details.
-   - `PUT /api/v1/rooms/:roomId` to update name, slogan, or description (create this endpoint in `roomController.js`).
-   - `DELETE /api/v1/rooms/:roomId/members/:userId` to kick members (create this endpoint in `roomController.js`).
-2. **Fix Profile Page Owned Rooms**:
-   The `getMyRooms` query in `userController.js` is missing `created_by` and `description` in its select statement. Add these so the frontend can filter and show owned rooms.
-3. **Typing Indicator UI**:
-   The socket events are wired up (`typing_start`, `typing_stop`), but the frontend `ChatRoomPage.jsx` needs a UI element to display `"{username} is typing..."`.
-4. **Message Pagination ("Load More")**:
-   Implement a "Load earlier messages" button using the `before` query parameter (cursor pagination) returned by `GET /api/v1/rooms/:roomId/messages`.
-
----
 
 ## 3. AWS Production Architecture
 
